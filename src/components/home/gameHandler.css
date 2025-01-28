@@ -1,0 +1,38 @@
+.gamingInputs{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    flex-direction: column;
+}
+
+.gamingInputButton{
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+    color: white;
+    border: 1px solid white;
+    margin-left: 10px;
+    margin-right: 10px;
+
+}
+.gamingButtons{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    margin-top: 20px;
+}
+
+.gamingInputsNameInput{
+    border-radius: 5px;
+    border: 1px solid white;
+    color: white;
+    padding: 10px;
+    background-color: transparent;
+    margin-top: 10px;
+    width: 200px;
+    text-align: center;
+}

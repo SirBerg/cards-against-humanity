@@ -1,0 +1,63 @@
+.deckContainer{
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+}
+.deckGroup{
+
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+    max-height: 5vh;
+}
+.deckGroupButton{
+    border: 1px solid white;
+    color: white;
+    width: 95vw;
+    border-radius: 5px;
+    margin: auto;
+}
+.deckButtonInactive{
+    display: flex;
+    flex-direction: row;
+    width: 95vw;
+    margin: 15px auto auto;
+    justify-content: space-between;
+    border-radius: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border: 1px solid white;
+}
+.deckButtonActive{
+    background-color: white;
+    color: black;
+}
+
+.deck{
+    width: 100%;
+    border: 1px solid white;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-weight: bolder;
+    font-size: 1.5rem;
+    margin-top: 5px;
+    max-width: 95vw;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 5px;
+}
+.isActive{
+    background-color: white;
+    color: black;
+}
+.deck:hover{
+    background-color: #f0f0f0;
+    cursor: pointer;
+}
+.deck:target{
+    background-color: #f0f0f0;
+    cursor: pointer;
+}
+*{
+    transition: cubic-bezier(0.4, 0, 0.2, 1) 0.2s all;
+}

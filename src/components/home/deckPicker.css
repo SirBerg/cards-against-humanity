@@ -1,0 +1,30 @@
+.deckPicker{
+    border: 1px solid white;
+    border-radius: 5px;
+    padding: 10px;
+    width: 300px;
+    transition: 0.2s cubic-bezier(0.075, 0.82, 0.165, 1);
+    font-weight: bolder;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+.deckName{
+    color: white;
+    margin: auto auto;
+}
+.deckPicker:hover{
+    cursor:pointer;
+    scale: 1.1;
+    background: rgba(255, 255, 255, 0.05);
+}
+.deckActive{
+    background: white;
+    color: black !important;
+}
+.deckActive:hover{
+    background-color: white !important;
+    color: black !important;
+}
+.deckActive .deckName{
+    color: black;
+}
