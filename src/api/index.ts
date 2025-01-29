@@ -2,15 +2,19 @@ import express from 'express'
 import {Database} from 'bun:sqlite'
 import coordinator, {gameTable} from './v1/game/coordinator'
 import {uuidv7} from "@/utils/uuid";
+import cors from 'cors'
 const app = express()
 const db = new Database('data/main.sqlite3')
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 var expressWs = require('express-ws')(app)
+app.use(cors())
+//get all the manifest IDs
+const manifestIDs = db.query('SELECT id FROM manifest').all().map((row)=>row.id)
 
 let clients:{[key:string]:Array<{userID:string, userName:string, ws:WebSocket, req:Request}>} = {}
 app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
     console.log('Socket connected')
-    if(!req.params.gameid || !req.headers.userid || Array.isArray(req.headers.gameid) || Array.isArray(req.headers.userid)){
+    if(!req.params.gameid || !req.query.userid || Array.isArray(req.query.userid)){
         console.log('Closing connection because of: Game ID and User ID required')
         ws.send('Game ID and User ID required')
         ws.close()
@@ -29,7 +33,7 @@ app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
     //check if the user is in the banned list for this game
     console.log(game)
     const banned = JSON.parse(game.bannedIDs)
-    if(banned.includes(req.headers.userid)){
+    if(banned.includes(req.query.userid)){
         console.log('Closing connection because of: User is banned')
         ws.send('You are banned from this game')
         ws.close()
@@ -39,8 +43,8 @@ app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
     if(!clients[game.id]){
         clients[game.id] = []
     }
-    clients[game.id].push({userID:req.headers.userid, userName:req.headers.username, ws, req})
-    await coordinator(ws, req, clients[game.id], req.headers.userid)
+    clients[game.id].push({userID:req.query.userid, userName:req.query.username, ws, req})
+    await coordinator(ws, req, clients[game.id], req.query.userid, manifestIDs)
 })
 
 app.get('/v1/game/coordinator', (req, res)=>{
