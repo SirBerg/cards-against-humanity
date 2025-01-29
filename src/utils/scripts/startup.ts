@@ -33,7 +33,7 @@ db.query(`
             (
                 id STRING PRIMARY KEY NOT NULL,
                 allowedPacks STRING,
-                allowedJWTs STRING,
+                allowedIDs STRING,
                 started BOOLEAN,
                 startedAt STRING,
                 ended BOOLEAN,
