@@ -12,7 +12,7 @@ export type gameTable = {
     allowBlackCardDupes:boolean,
     blackCardsPlayed:string
 }
-export type validMessageTypes = 'newUser' | 'removeUser' | 'startGame' | 'endGame' | 'banUser' | 'unbanUser' | 'whiteCardSubmitted' | 'blackCardDrawn' | 'winner' | 'drawWhiteCard' | 'addDeck' | 'removeDeck' | 'error' | 'getDecks' | 'updateReadyState'
+export type validMessageTypes = 'newUser' | 'removeUser' | 'startGame' | 'endGame' | 'banUser' | 'unbanUser' | 'updateUser' | 'whiteCardSubmitted' | 'blackCardDrawn' | 'winner' | 'drawWhiteCard' | 'updateDecks' | 'error' | 'getDecks' | 'updateReadyState'
 export const messageTypes:Array<validMessageTypes> = [
     'newUser',
     'removeUser',
@@ -24,11 +24,11 @@ export const messageTypes:Array<validMessageTypes> = [
     'drawWhiteCard',
     'blackCardDrawn',
     'winner',
-    'addDeck',
-    'removeDeck',
+    'updateDecks',
     'error',
     'getDecks',
-    'updateReadyState'
+    'updateReadyState',
+    'updateUser'
 ]
 export default async function coordinator(ws:WebSocket, req:Request, clients:Array<{userID:string, userName:string, ws:WebSocket, req:Request}>, userID:string, manifestIDs:Array<string>){
     const db = new Database('data/main.sqlite3')
@@ -50,6 +50,7 @@ export default async function coordinator(ws:WebSocket, req:Request, clients:Arr
         let message
         try{
             message = JSON.parse(msg.toString())
+            console.log(message.type)
             if(!message.type){
                 console.log('Message has no type, ignoring')
                 return
@@ -97,40 +98,78 @@ export default async function coordinator(ws:WebSocket, req:Request, clients:Arr
         }
         //this is where logic is handled for private message for only one client
         if(message.type == 'drawWhiteCard' && isStarted){
-
         }
 
         //handle the logic to add or remove a deck from the game
-        if(message.type == 'addDeck' || message.type == 'removeDeck'){
+        if(message.type == 'updateDecks'){
             //check if the request is coming from the owner of the game
             if(!isOwner){
                 ws.send(JSON.stringify({'type': 'error', 'text': 'Your are not the owner of this game!'}))
                 return
             }
-            if(!message.deckID){
-                ws.send(JSON.stringify({'type': 'error', 'text': 'Deck ID required'}))
+            if(!message.deckIDs){
+                ws.send(JSON.stringify({'type': 'error', 'text': 'Deck IDs required'}))
                 return
             }
-            if(message.type == 'addDeck'){
-                //add the deck to the list of allowed decks
-                if(allowedDecks.includes(message.deckID)){
-                    ws.send(JSON.stringify({'type': 'error', 'text': 'Deck already added'}))
-                    return
-                }
-                allowedDecks.push(message.deckID)
-                db.query('UPDATE games SET allowedPacks = ? WHERE id = ?').run(JSON.stringify(allowedDecks), req.params.gameid)
-                ws.send(JSON.stringify({'type': 'addDeck', 'deckID': message.deckID}))
+            if(!Array.isArray(message.deckIDs)){
+                ws.send(JSON.stringify({'type': 'error', 'text': 'Deck IDs must be an Array'}))
                 return
             }
-            if(message.type == 'removeDeck'){
-                //remove the deck from the list of allowed decks
-                allowedDecks = allowedDecks.filter((deckID:string)=>{
-                    return deckID != message.deckID
-                })
-                db.query('UPDATE games SET allowedPacks = ? WHERE id = ?').run(JSON.stringify(allowedDecks), req.params.gameid)
+            //add the deck to the list of allowed decks
+            if(allowedDecks.includes(message.deckIDs)){
+                ws.send(JSON.stringify({'type': 'error', 'text': 'Deck already added'}))
+                return
             }
+            allowedDecks = message.deckIDs
+
+            db.query('UPDATE games SET allowedPacks = ? WHERE id = ?').run(JSON.stringify(allowedDecks), req.params.gameid)
+            ws.send(JSON.stringify({'type': 'addDeck', 'deckID': message.deckID}))
+            return
         }
 
+        //handle the update user message
+        if(message.type == 'updateUser'){
+            console.log('Updating user')
+            if(!message.userID || !message.userName){
+                ws.send(JSON.stringify({'type': 'error', 'text': 'User ID and Name required'}))
+                return
+            }
+            //check if the user is trying to update themself and not someone else
+            if(message.userID != req.query.userid) {
+                ws.send(JSON.stringify({'type': 'error', 'text': 'You can only update yourself'}))
+                return
+            }
+            //send the updated user information to all other clients
+            returnMessage = {'type': 'updateUser', 'userID': message.userID, 'userName': message.userName}
+        }
+        if(message.type == 'banUser'){
+            if(!isOwner){
+                ws.send(JSON.stringify({'type': 'error', 'text': 'You are not the owner of this game'}))
+                return
+            }
+            //check if the user is trying to ban themself
+            if(message.userID == req.query.userid){
+                ws.send(JSON.stringify({'type': 'error', 'text': 'You cannot ban yourself'}))
+                return
+            }
+            //ban the user from the game
+            let banned = JSON.parse(game.bannedIDs)
+            if(banned.includes(message.userID)){
+                ws.send(JSON.stringify({'type': 'error', 'text': 'User already banned'}))
+                return
+            }
+            banned.push(message.userID)
+            db.query('UPDATE games SET bannedIDs = ? WHERE id = ?').run(JSON.stringify(banned), req.params.gameid)
+            //send the banned user a message that they have been banned
+            clients.forEach((client)=>{
+                if(client.userID == message.userID){
+                    //send the banned user a message that they have been banned
+                    client.ws.send(JSON.stringify({'type': 'banUser', 'text': 'You have been banned from this game'}))
+                    //close the connection
+                    client.ws.close()
+                }
+            })
+        }
         console.log('Returning Message: ', returnMessage)
         clients.forEach((client)=>{
             //remove any stale connections from the list of clients
@@ -157,6 +196,10 @@ export default async function coordinator(ws:WebSocket, req:Request, clients:Arr
         clients.forEach((client)=>{
             client.ws.send(JSON.stringify({type:'removeUser', userID:req.query.userid}))
         })
+        if(clients.length == 0){
+            console.log('No clients connected, closing the connection and deleting the game')
+            db.query('DELETE FROM games WHERE id = ?').run(req.params.gameid)
+        }
     })
     ws.on('open', ()=>{
         console.log('Connection opened')

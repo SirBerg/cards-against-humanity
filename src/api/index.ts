@@ -31,7 +31,6 @@ app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
     }
 
     //check if the user is in the banned list for this game
-    console.log(game)
     const banned = JSON.parse(game.bannedIDs)
     if(banned.includes(req.query.userid)){
         console.log('Closing connection because of: User is banned')
@@ -44,6 +43,7 @@ app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
         clients[game.id] = []
     }
     clients[game.id].push({userID:req.query.userid, userName:req.query.username, ws, req})
+    //insert the user into the database
     await coordinator(ws, req, clients[game.id], req.query.userid, manifestIDs)
 })
 
@@ -58,12 +58,12 @@ app.get('/v1/game/coordinator', (req, res)=>{
 app.post('/v1/game/coordinator', (req, res)=>{
     //create a new game in the games table and return the ID to the sender
     console.log(req.headers)
-    if(!req.headers.userid || !req.headers.username || Array.isArray(req.headers.userid) || Array.isArray(req.headers.username)){
+    if(!req.headers.userid || !req.headers.username || Array.isArray(req.headers.userid) || Array.isArray(req.headers.username) || req.headers.userid == 'undefined' || req.headers.username == 'undefined'){
         res.status(400).send('User ID and Name required')
         return
     }
     const gameID = uuidv7()
-
+    console.log(`Creating game with ID: ${gameID} and user ID: ${req.headers.userid}`)
     db.query('DELETE FROM games WHERE ownerID = ?').run(req.headers.userid)
     db.query('INSERT INTO games (id, ownerID, allowedPacks, allowedIDs, started, startedAt, ended, allowBlackCardDupes, blackCardsPlayed, bannedIDs) VALUES (?, ?, ? ,?, ?, ?, ?, ?, ?, ?)')
         .run(gameID, req.headers.userid.replaceAll('"', ''), '[]', JSON.stringify([{userID: req.headers.userid.replaceAll('"', ''), userName: req.headers.username}]), false, 'null', false, false, '[]', '[]')

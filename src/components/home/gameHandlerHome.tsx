@@ -3,7 +3,7 @@ import './gameHandler.css'
 import {useEffect, useState, useRef} from "react";
 import { uuidv7 } from "@/utils/uuid";
 import { useCookies } from 'next-client-cookies';
-export default function GameHandlerHome(){
+export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<string>}) {
     const cookies = useCookies()
     const [user, setUser] = useState({id:'', name:''})
     const [gameID, setGameID] = useState('')
@@ -15,20 +15,24 @@ export default function GameHandlerHome(){
         //if there is, connect to the websocket server and request a new game
         //if there isn't, generate a new id and set it as a cookie
         let user = cookies.get('userID')
-        if(!user){
+        if(!user || user == 'undefined' || cookies.get('userName') == ''){
             console.log("No user ID found, generating a new one")
             const id = uuidv7()
+            const { uniqueNamesGenerator, adjectives, colors, animals } = require('unique-names-generator');
+
+            const randomName = uniqueNamesGenerator({ dictionaries: [adjectives, colors, animals] }); // big_red_donkey
             user = id
             cookies.set('userID', id)
-            cookies.set('userName', '')
+            cookies.set('userName', randomName)
         }
         console.log('User ID: ', user)
         setUser({id:user, name:cookies.get('userName')})
-
+        console.log('User', user)
+        console.log('Cookies', cookies.get('userName'))
         //request a new game
         const myHeaders = new Headers();
-        myHeaders.append("userID", user.id);
-        myHeaders.append("userName", user.name);
+        myHeaders.append("userID", cookies.get('userID') as string);
+        myHeaders.append("userName", cookies.get('userName') as string);
 
         const requestOptions = {
             method: "POST",
@@ -37,7 +41,10 @@ export default function GameHandlerHome(){
         };
         fetch("http://localhost:3001/v1/game/coordinator", requestOptions)
             .then((response) => response.text())
-            .then((result) => setGameID(JSON.parse(result).gameID))
+            .then((result) => {
+                console.log(result)
+                setGameID(JSON.parse(result).gameID)
+            })
             .catch((error) => console.error(error));
     },[])
     useEffect(() => {
@@ -46,6 +53,9 @@ export default function GameHandlerHome(){
             const ws = new WebSocket(`ws://localhost:3001/v1/game/coordinator/${gameID}?userid=${user.id}&username=${user.name}`);
             ws.onopen = () => {
                 console.log("Connected to the websocket server");
+                //send a message with all decks that are currently selected
+                console.log('Selected Decks', JSON.stringify({type: 'updateDecks', deckIDs: selectedDecks}))
+                ws.send(JSON.stringify({type: 'updateDecks', deckIDs: selectedDecks}))
             };
             ws.onmessage = (event) => {
                 const message = JSON.parse(event.data);
@@ -64,18 +74,41 @@ export default function GameHandlerHome(){
                         return updatedUsers;
                     });
                 }
+                if (message.type === 'updateUser'){
+                    setUsers((prevUsers) => {
+                        let updatedUsers = prevUsers.filter((user) => user.id !== message.userID);
+                        updatedUsers.push({id: message.userID, name: message.userName});
+                        console.log('Updated Users', updatedUsers);
+                        userRef.current = updatedUsers;
+                        return updatedUsers;
+                    });
+                }
             };
             setWebSocket(ws);
         }
     }, [gameID]);
     useEffect(()=>{
         userRef.current = users
-        console.log('Users', users)
     }, [users])
     useEffect(() => {
-        console.log(user)
         cookies.set('userName', user.name)
+        webSocket?.send(JSON.stringify({type: 'updateUser', userID: user.id, userName: user.name}));
     }, [user]);
+
+    //handle the updating of the selected decks
+    useEffect(()=>{
+        if(webSocket){
+            webSocket.send(JSON.stringify({type: 'updateDecks', deckIDs: selectedDecks}))
+        }
+    }, [selectedDecks])
+    function banUser(userID:string){
+        //ensure the user is not banning themselves
+        if(userID === user.id){
+            return
+        }
+        webSocket?.send(JSON.stringify({type: 'banUser', userID}));
+    }
+
     return (
         <div className="gamingInputs">
             <input className="gamingInputsNameInput" placeholder="Your Name"  onChange={(event)=>{
@@ -85,7 +118,11 @@ export default function GameHandlerHome(){
                 <button className="gamingInputButton">
                     Start Game
                 </button>
-                <button className="gamingInputButton">
+                <button className="gamingInputButton" onClick={()=>{
+                    navigator.clipboard.writeText(`http://localhost:3000/waitingRoom?gameID=${gameID}`).then(()=>{
+                        alert('Copied to clipboard')
+                    })
+                }}>
                     Copy Code
                 </button>
             </div>
@@ -93,9 +130,15 @@ export default function GameHandlerHome(){
                 {
                     users.map((user)=>{
                         return (
-                            <div className="Player" key={user.id}>
+                            <button
+                                className="Player"
+                                key={user.id}
+                                onClick={()=>{
+                                    banUser(user.id)
+                                }}
+                            >
                                 <p>{user.name}</p>
-                            </div>
+                            </button>
                         )
                     })
                 }

@@ -17,7 +17,6 @@ export default async function Home() {
             <h3>
                 Choose some decks to start playing
             </h3>
-            <GameHandlerHome />
             <DeckPicker/>
         </div>
   );
