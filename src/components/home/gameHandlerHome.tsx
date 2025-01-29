@@ -19,15 +19,19 @@ export default function GameHandlerHome(){
             cookies.set('userName', '')
         }
         console.log('User ID: ', user)
+        setUser({id:user, name:cookies.get('userName')})
+
+        //request a new game
     },[])
     useEffect(() => {
         console.log(user)
+        cookies.set('userName', user.name)
     }, [user]);
     return (
         <div className="gamingInputs">
             <input className="gamingInputsNameInput" placeholder="Your Name"  onChange={(event)=>{
                 setUser({id:cookies.get('userID') as string, name:event.target.value})
-            }}></input>
+            }} value={user.name}></input>
             <div className="gamingButtons">
                 <button className="gamingInputButton">
                     Start Game

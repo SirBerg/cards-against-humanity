@@ -32,8 +32,10 @@ db.query(`
         CREATE TABLE IF NOT EXISTS games
             (
                 id STRING PRIMARY KEY NOT NULL,
+                ownerID STRING,
                 allowedPacks STRING,
                 allowedIDs STRING,
+                bannedIDs STRING,
                 started BOOLEAN,
                 startedAt STRING,
                 ended BOOLEAN,
