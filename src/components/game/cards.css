@@ -1,0 +1,92 @@
+.whiteCard{
+    background-color: white;
+    border-radius: 5px;
+    padding: 10px;
+    font-weight: bolder;
+    height: 300px;
+    width: 200px;
+    border: 1px solid red;
+    color: black;
+}
+.cardSelector {
+    display: flex;
+    flex-direction: row;
+    position: fixed;
+    bottom: 0;
+    max-width: 100vw;
+    margin-top: -100px;
+}
+
+.cardSelector .whiteCard {
+    position: absolute;
+    transition: left 0.3s ease;
+}
+
+@media (max-width: 600px) {
+    .cardSelector .whiteCard:nth-child(1) {
+        left: 0;
+        z-index: 5;
+    }
+    .cardSelector .whiteCard:nth-child(2) {
+        left: 20px;
+        z-index: 4;
+    }
+    .cardSelector .whiteCard:nth-child(3) {
+        left: 40px;
+        z-index: 3;
+    }
+    .cardSelector .whiteCard:nth-child(4) {
+        left: 60px;
+        z-index: 2;
+    }
+    .cardSelector .whiteCard:nth-child(5) {
+        left: 80px;
+        z-index: 1;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 1200px) {
+    .cardSelector .whiteCard:nth-child(1) {
+        left: 0;
+        z-index: 5;
+    }
+    .cardSelector .whiteCard:nth-child(2) {
+        left: 40px;
+        z-index: 4;
+    }
+    .cardSelector .whiteCard:nth-child(3) {
+        left: 80px;
+        z-index: 3;
+    }
+    .cardSelector .whiteCard:nth-child(4) {
+        left: 120px;
+        z-index: 2;
+    }
+    .cardSelector .whiteCard:nth-child(5) {
+        left: 160px;
+        z-index: 1;
+    }
+}
+
+@media (min-width: 1201px) {
+    .cardSelector .whiteCard:nth-child(1) {
+        left: 0;
+        z-index: 5;
+    }
+    .cardSelector .whiteCard:nth-child(2) {
+        left: 60px;
+        z-index: 4;
+    }
+    .cardSelector .whiteCard:nth-child(3) {
+        left: 120px;
+        z-index: 3;
+    }
+    .cardSelector .whiteCard:nth-child(4) {
+        left: 180px;
+        z-index: 2;
+    }
+    .cardSelector .whiteCard:nth-child(5) {
+        left: 240px;
+        z-index: 1;
+    }
+}

@@ -1,0 +1,12 @@
+.scoreboardUser{
+    display: flex;
+    flex-direction: row;
+}
+.scoreboard{
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    margin-top: 20px;
+    margin-left: 20px;
+    max-width: fit-content;
+}

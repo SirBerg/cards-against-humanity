@@ -3,6 +3,14 @@ import './gameHandler.css'
 import {useEffect, useState, useRef} from "react";
 import { uuidv7 } from "@/utils/uuid";
 import { useCookies } from 'next-client-cookies';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Skeleton } from "@/components/ui/skeleton"
+
 export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<string>}) {
     const cookies = useCookies()
     const [user, setUser] = useState({id:'', name:''})
@@ -83,6 +91,10 @@ export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<str
                         return updatedUsers;
                     });
                 }
+                if (message.type === 'startGame'){
+                    console.log('Starting game');
+                    window.location.href = `/game?gameID=${gameID}`;
+                }
             };
             setWebSocket(ws);
         }
@@ -108,14 +120,21 @@ export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<str
         }
         webSocket?.send(JSON.stringify({type: 'banUser', userID}));
     }
-
+    function startGame(){
+        if(users.length > 1){
+            webSocket?.send(JSON.stringify({type: 'startGame'}));
+        }
+        else{
+            alert('You need at least 2 players to start the game')
+        }
+    }
     return (
         <div className="gamingInputs">
             <input className="gamingInputsNameInput" placeholder="Your Name"  onChange={(event)=>{
                 setUser({id:cookies.get('userID') as string, name:event.target.value})
             }} value={user.name}></input>
             <div className="gamingButtons">
-                <button className="gamingInputButton">
+                <button className="gamingInputButton" onClick={()=>{startGame()}}>
                     Start Game
                 </button>
                 <button className="gamingInputButton" onClick={()=>{
@@ -126,22 +145,44 @@ export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<str
                     Copy Code
                 </button>
             </div>
-            <div className="Players">
+            <div className="PlayerContainer">
                 {
                     users.map((user)=>{
+                        console.log('rendering user:', user)
                         return (
-                            <button
-                                className="Player"
-                                key={user.id}
-                                onClick={()=>{
-                                    banUser(user.id)
-                                }}
-                            >
-                                <p>{user.name}</p>
-                            </button>
+                            <TooltipProvider key={user.id}>
+                                <Tooltip>
+                                    <TooltipTrigger
+                                        className="Player"
+                                        onClick={() => {
+                                            banUser(user.id)
+                                        }}
+                                        style={{
+                                            backgroundColor: user.id === user.id ? 'red' : 'blue'
+                                        }}
+                                    >
+                                        <p>{user.name[0].toUpperCase()}</p>
+
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Username: {user.name}</p>
+                                        <p>(Click to remove this user)</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         )
                     })
                 }
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger>
+                            <Skeleton className="w-[50px] h-[50px] rounded-full" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Waiting for Players...</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
         </div>
     )

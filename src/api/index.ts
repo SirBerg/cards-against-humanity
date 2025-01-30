@@ -16,7 +16,7 @@ app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
     console.log('Socket connected')
     if(!req.params.gameid || !req.query.userid || Array.isArray(req.query.userid)){
         console.log('Closing connection because of: Game ID and User ID required')
-        ws.send('Game ID and User ID required')
+        ws.send(JSON.stringify({type:'error', text:'Game ID and User ID required'}))
         ws.close()
         return
     }
@@ -25,7 +25,7 @@ app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
     const game:gameTable = db.query('SELECT * FROM games WHERE id = ?').get(req.params.gameid)
     if(!game){
         console.log('Closing connection because of: Game not found')
-        ws.send('Game not found')
+        ws.send(JSON.stringify({type:'error', text:'Game not found'}))
         ws.close()
         return
     }
@@ -34,7 +34,7 @@ app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
     const banned = JSON.parse(game.bannedIDs)
     if(banned.includes(req.query.userid)){
         console.log('Closing connection because of: User is banned')
-        ws.send('You are banned from this game')
+        ws.send(JSON.stringify({type:'error', text:'You are banned from this game'}))
         ws.close()
         return
     }
@@ -42,8 +42,28 @@ app.ws('/v1/game/coordinator/:gameid', async (ws:WebSocket, req:Request)=>{
     if(!clients[game.id]){
         clients[game.id] = []
     }
+    if(clients[game.id].find((client)=>client.userID == req.query.userid)){
+        //the user is already connected, terminate the old connection and replace it with the new one
+        clients[game.id].forEach((client)=>{
+            if(client.userID == req.query.userid){
+                client.ws.close()
+            }
+        })
+    }
+
     clients[game.id].push({userID:req.query.userid, userName:req.query.username, ws, req})
-    //insert the user into the database
+
+    //insert the userid into the database
+    let newUserID = {userID:req.query.userid, userName:req.query.username, points: 0}
+    let allowedIDs = JSON.parse(game.allowedIDs)
+    if(game.allowedIDs.includes(JSON.stringify(newUserID))){
+        console.log('User already in the game, not adding them again')
+    }
+    else{
+        allowedIDs.push(newUserID)
+        db.query('UPDATE games SET allowedIDs = ? WHERE id = ?').run(JSON.stringify(allowedIDs), game.id)
+    }
+
     await coordinator(ws, req, clients[game.id], req.query.userid, manifestIDs)
 })
 
@@ -66,7 +86,7 @@ app.post('/v1/game/coordinator', (req, res)=>{
     console.log(`Creating game with ID: ${gameID} and user ID: ${req.headers.userid}`)
     db.query('DELETE FROM games WHERE ownerID = ?').run(req.headers.userid)
     db.query('INSERT INTO games (id, ownerID, allowedPacks, allowedIDs, started, startedAt, ended, allowBlackCardDupes, blackCardsPlayed, bannedIDs) VALUES (?, ?, ? ,?, ?, ?, ?, ?, ?, ?)')
-        .run(gameID, req.headers.userid.replaceAll('"', ''), '[]', JSON.stringify([{userID: req.headers.userid.replaceAll('"', ''), userName: req.headers.username}]), false, 'null', false, false, '[]', '[]')
+        .run(gameID, req.headers.userid.replaceAll('"', ''), '[]', JSON.stringify([{userID: req.headers.userid.replaceAll('"', ''), userName: req.headers.username, points: 0}]), false, 'null', false, false, '[]', '[]')
     res.status(200).json({gameID})
 })
 

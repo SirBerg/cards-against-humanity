@@ -5,10 +5,14 @@ import { useSearchParams } from "next/navigation";
 import {uuidv7} from "@/utils/uuid";
 import {adjectives, animals, colors, uniqueNamesGenerator} from "unique-names-generator";
 import {useCookies} from "next-client-cookies";
+import { Toaster } from "@/components/ui/toaster"
+import { useToast } from "@/hooks/use-toast"
+
 
 export default function Handler(){
     const searchParams = useSearchParams();
     const [user, setUser] = useState({id:'', name:''})
+    const { toast } = useToast()
     const cookies = useCookies()
     const [webSocket, setWebSocket] = useState<WebSocket>()
     useEffect(() => {
@@ -42,13 +46,27 @@ export default function Handler(){
             }
             let message = JSON.parse(event.data)
             if(message.type == 'banUser'){
-
+                window.alert('You have been banned from this game, redirecting to homepage')
+                window.location.href = '/'
+            }
+            if(message.type == 'error'){
+                toast({description: message.text, title: 'Error:'})
+            }
+            if(message.type == 'startGame'){
+                window.location.href = `/game?gameID=${searchParams.get('gameID')}`
             }
         };
+        ws.onclose = ()=>{
+            console.log('Connection to the websocket server closed')
+            toast({description: 'Connection to the websocket server closed', title: 'Error:'})
+        }
         setWebSocket(ws)
         setUser({id:user, name:cookies.get('userName')})
 
     }, []);
+    useEffect(()=>{
+        cookies.set('userName', user.name)
+    }, [user])
     return(
         <div className="waitingRoomMain">
             <div className="waitingRoomInner">
@@ -62,6 +80,7 @@ export default function Handler(){
                     }
                 }} />
             </div>
+            <Toaster />
         </div>
     )
 }
