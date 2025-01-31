@@ -22,7 +22,7 @@
     "@types/chalk": "^2.2.4",
     "@types/express": "^5.0.0",
     "@types/express-ws": "^3.0.5",
-    "chalk": "^5.4.1",
+    "cah": ".",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",

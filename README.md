@@ -2,6 +2,7 @@
 ## Developement
 
 ```bash
+bun install
 bun --bun run dev # the --bun is very important as bun:sqlite fails to import without it in route handlers
 ```
 

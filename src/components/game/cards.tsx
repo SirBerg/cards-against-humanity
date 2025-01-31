@@ -1,7 +1,6 @@
 import {useEffect, useState} from "react";
 import './cards.css'
-import {card} from "@/lib/types";
-export function Card({selectedCards, card}:{selectedCards:Array<string>, card:card}) {
+export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{id:string, text:string, pack:string}}) {
     const [selected, setSelected] = useState(false)
     return(
         <div className={`whiteCardContainer ${selected?`whiteCardContainerActive`:null}`} onClick={()=>{setSelected(!selected)}}>
@@ -10,8 +9,10 @@ export function Card({selectedCards, card}:{selectedCards:Array<string>, card:ca
                     (
                         <div>
                             <div className="whiteCard">
-                                {card.content}
+                                {card.text}
+                                <div className="whiteCardPackName">
                                 {card.pack}
+                                </div>
                             </div>
                             {selected ?
                                 (<button className="whiteCardSubmitButton">
@@ -28,14 +29,11 @@ export function Card({selectedCards, card}:{selectedCards:Array<string>, card:ca
     )
 }
 
-export function BlackCard({card}:{card:{content:string, pack:string, id:string}}) {
-    useEffect(() => {
-        console.log('USING BLACKCARD:', card)
-    }, []);
+export function BlackCard() {
     return (
         <div className="blackCard-Container">
             <div className="blackCard">
-                {card.content}
+                This is a test Black Card!
             </div>
             <button className="submitButton">
                 Confirm
@@ -44,14 +42,14 @@ export function BlackCard({card}:{card:{content:string, pack:string, id:string}}
     )
 }
 
-export default function CardSelector({cards}:{cards:Array<card>}) {
+export default function CardSelector({cards, callback}:{cards:{[key:string]:{content:string, pack:string }}, callback:Function}) {
     const [submittedCards, setSubmittedCards] = useState<Array<string>>([])
     return (
         <div className="cardSelector">
             {
-                cards.map((card)=>{
+                Object.keys(cards).map((card)=>{
                     return(
-                        <Card selectedCards={submittedCards} card={card} key={card.id}/>
+                        <Card selectedCards={submittedCards} card={{id:card, text:cards[card].content, pack:cards[card].pack}} key={card}/>
                     )
                 })
             }
