@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import './cards.css'
-export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{id:string, text:string, pack:string}}) {
+import {card} from "@/lib/types";
+export function Card({selectedCards, card}:{selectedCards:Array<string>, card:card}) {
     const [selected, setSelected] = useState(false)
     return(
         <div className={`whiteCardContainer ${selected?`whiteCardContainerActive`:null}`} onClick={()=>{setSelected(!selected)}}>
@@ -9,7 +10,7 @@ export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{i
                     (
                         <div>
                             <div className="whiteCard">
-                                {card.text}
+                                {card.content}
                                 {card.pack}
                             </div>
                             {selected ?
@@ -28,6 +29,9 @@ export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{i
 }
 
 export function BlackCard({card}:{card:{content:string, pack:string, id:string}}) {
+    useEffect(() => {
+        console.log('USING BLACKCARD:', card)
+    }, []);
     return (
         <div className="blackCard-Container">
             <div className="blackCard">
@@ -40,14 +44,14 @@ export function BlackCard({card}:{card:{content:string, pack:string, id:string}}
     )
 }
 
-export default function CardSelector({cards, callback}:{cards:{[key:string]:{content:string, pack:string }}, callback:Function}) {
+export default function CardSelector({cards}:{cards:Array<card>}) {
     const [submittedCards, setSubmittedCards] = useState<Array<string>>([])
     return (
         <div className="cardSelector">
             {
-                Object.keys(cards).map((card)=>{
+                cards.map((card)=>{
                     return(
-                        <Card selectedCards={submittedCards} card={{id:card, text:cards[card].content, pack:cards[card].pack}} key={card}/>
+                        <Card selectedCards={submittedCards} card={card} key={card.id}/>
                     )
                 })
             }

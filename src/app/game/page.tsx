@@ -7,122 +7,136 @@ import { useToast } from "@/hooks/use-toast"
 import Scoreboard from "@/components/game/scoreboard";
 import {uuidv7} from "@/utils/uuid";
 import CardSelector, {BlackCard} from "@/components/game/cards";
+import {gameType, card} from "@/lib/types";
 import './game.css'
 export default function Game(){
-    const [game, setGame] = useState({
-        gameID:'',
-        users:{},
-        ownerID:'',
-        ownerName:'',
-        started: true,
-        allowedPacks:[],
-    })
     const [websocket, setWebsocket] = useState<WebSocket>()
     const searchParams = useSearchParams();
+    const [gameID, setGameID] = useState('')
     const cookies = useCookies()
     const { toast } = useToast()
-    const [cards, setCards] = useState<{[key:string]: { content:string, pack:string }}>({})
-    const [users, setUsers] = useState<Array<{id:string, name:string}>>([])
-    const [blackCard, setBlackCard] = useState({content:'', pack:'', id:''})
+    const [user, setUser] = useState({id:'', name:''})
+    const [blackCard, setBlackCard] = useState<card>(null)
+    const [userCards, setUserCards] = useState<Array<card>>([])
+    const [game, setGame] = useState<
+        gameType | null
+    >(null)
     useEffect(() => {
-        //check if the user has a cookie set with their ID and name
-        //if not, create them
-        if(!cookies.get('userID') || cookies.get('userID') == 'undefined' || cookies.get('userName') == ''){
+        //check if there's a cookie set with the id and name of the user
+        //if there is, connect to the websocket server and request a new game
+        //if there isn't, generate a new id and set it as a cookie
+        let user = cookies.get('userID')
+        if(!user || user == 'undefined' || cookies.get('userName') == ''){
             console.log("No user ID found, generating a new one")
             const id = uuidv7()
             const { uniqueNamesGenerator, adjectives, colors, animals } = require('unique-names-generator');
-
             const randomName = uniqueNamesGenerator({ dictionaries: [adjectives, colors, animals] }); // big_red_donkey
+            user = id
+            setUser({id:id, name:randomName})
             cookies.set('userID', id)
             cookies.set('userName', randomName)
         }
-
-        //get the game ID from the URL and connect to the websocket server
-        const ws = new WebSocket(`ws://localhost:3001/v1/game/coordinator/${searchParams.get('gameID')}?userid=${cookies.get('userID')}&username=${cookies.get('userName')}`);
-        ws.onopen = ()=>{
-            ws.send(JSON.stringify({type: 'updateReadyState'}))
-            ws.send(JSON.stringify({type: 'getUsers'}))
-            ws.send(JSON.stringify({type: 'getCards', 'cardCount': 5}))
-            ws.send(JSON.stringify({type: 'getBlackCard'}))
+        console.log('User ID: ', user)
+        //get the gameID from the URL
+        const gameID = searchParams.get('gameID')
+        if(!gameID){
+            toast({description: 'There is not gameID in that URL', title: 'Error:'})
+            window.location.href='/'
+            return
         }
-        ws.onmessage = (event) => {
-            let message = JSON.parse(event.data)
-            if(message.type == 'updateReadyState'){
-                if(message.started != true){
-                    console.log('Game has not started yet')
-                }
-            }
-            if(message.type == 'error' && message.text == 'Game not found'){
-                toast({description: 'Game not found', title: 'Error'})
-                window.location.href = '/'
-            }
-            if(message.type == 'removeUser'){
-                toast({description: `${message.userName} has left the game`, title: 'User Left'})
-            }
-            if(message.type == 'newUser'){
-                toast({description: `${message.userName} has joined the game`, title: 'New User'})
-            }
-            if(message.type == 'getUsers'){
-                setUsers(message.users)
-            }
-            if(message.type == 'card'){
-                //get the current cards
-                const currentCards = cards;
-                //add the new cards (responsibility of removing cards falls within the playCard function, so we can assume that the cards are less than 5)
-                currentCards[message.cardID] = {
-                    content: message.cardText,
-                    pack: message.pack
-                }
-                console.log(currentCards)
-                setCards(currentCards)
-            }
-            if(message.type == 'blackCard'){
-                setBlackCard({content: message.cardText, pack: message.pack, id: message.cardID})
-            }
-            console.log(message)
-        }
-        setWebsocket(ws)
+        setGameID(gameID)
     }, []);
-    function updateScores(game){
-        setGame(game)
-    }
-    function requestNewCards(cardCount:number){
-        if(websocket && websocket.readyState == 1){
-            websocket.send(JSON.stringify({type: 'getCards', 'cardCount': cardCount}))
-        }
-    }
     useEffect(() => {
-        console.log('Users have been updated', users)
-        let gameTest = game
-        let usersInGameObj = Object.keys(game.users)
-        for(const user of users){
-            console.log('Checking user', user)
-            if(!usersInGameObj.includes(user.userID)){
-                gameTest.users[user.userID] = {userName:user.userName, points: user.points}
+        const ws = new WebSocket(`ws://localhost:3001/v2/game/coordinator/${gameID}?userid=${cookies.get('userID')}&username=${cookies.get('userName')}`)
+        setWebsocket(ws)
+        ws.onopen = () => {
+            console.log('Connected to the websocket server')
+            ws.send(JSON.stringify({type:'getGame'}))
+        }
+        ws.onmessage = (message) => {
+            const data = JSON.parse(message.data)
+            if(data.type == 'error'){
+                toast({description: data.error, title: 'Error:'})
+            }
+            if(data.type == 'gameState'){
+                setGame(data.game)
             }
         }
-        console.log('Setting game from: ', game, 'to', gameTest)
-        setGame(gameTest)
-    }, [users]);
+    }, [gameID]);
+
     useEffect(() => {
-        console.log('Game has been updated', game)
+        console.log('USING GAMESTATE:', game)
+        //set the state of the black card
+        async function wrapper(){
+            setBlackCard(await getCard(game?.currentBlackCard.cardID, game?.currentBlackCard.pack))
+
+            //set the state of the user's cards
+            let cards = []
+            for(let card of game.clients[cookies.get('userID')].cards){
+                cards.push(await getCard(card.cardID, card.pack))
+            }
+            setUserCards(cards)
+        }
+        if(game){
+            wrapper()
+        }
     }, [game]);
-    /*
-    *
-    * {
-                users?
-                    <Scoreboard users={users} callback={updateScores}/>
-                    :
-                    null
-            }
-    * */
-    return(
-        <div className="gameMain">
-            <BlackCard card={blackCard}/>
-            {
-                cards ? <CardSelector cards={cards} callback={requestNewCards}/> : null
-            }
-            <Toaster />
-        </div>
-    )
+    async function getCard(cardID:string, packID:string):Promise<card>{
+        return new Promise(async (resolve, reject) => {
+            const requestOptions = {
+                method: "GET",
+                redirect: "follow"
+            };
+            await fetch(`http://localhost:3001/v2/card/${packID}/${cardID}`, requestOptions)
+                .then((response) => response.text())
+                .then((result) => {
+                    try{
+                        const card = JSON.parse(result)
+                        resolve(card)
+                    }
+                    catch(e){
+                        console.error(e)
+                        reject(e)
+                    }
+                })
+                .catch((error) => reject(error));
+        })
+
+    }
+
+    //if the game isn't empty anymore, we want to show the game
+    if(game){
+
+        //if it's the users turn, we want to show them the black card only and a message to wait for the other players
+        if(game.clients[cookies.get('userID')].isTurn){
+            return(
+                <div className="gameMain">
+                    {blackCard ? <BlackCard card={blackCard}/> : null}
+                    <div>
+                        <h2>It&#39;s your turn! Sit tight and wait for the other to submit something</h2>
+                    </div>
+                    <Toaster />
+                </div>
+            )
+        }
+
+        //this is the default screen shown to the user
+        return(
+            <div className="gameMain">
+                {blackCard ? <BlackCard card={blackCard}/> : null}
+                {userCards.length > 0 ? <CardSelector cards={userCards}/> : null}
+                <Toaster />
+            </div>
+        )
+    }
+
+    //if the game hasn't loaded yet, show a loading message
+    else{
+        return(
+            <div className="gameMain">
+                Loading Game...
+                <Toaster />
+            </div>
+        )
+    }
 }

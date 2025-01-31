@@ -10,14 +10,17 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
+import {toast, useToast} from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster"
+import {gameType} from "@/lib/types";
 
-export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<string>}) {
+export default function GameHandlerHome({callback}:{callback:Function}) {
     const cookies = useCookies()
     const [user, setUser] = useState({id:'', name:''})
     const [gameID, setGameID] = useState('')
     const [webSocket, setWebSocket] = useState<WebSocket>()
-    const [users, setUsers] = useState<Array<{id:string, name:string}>>([])
-    const userRef = useRef(users)
+    const [game, setGame] = useState<gameType | null>(null)
+    const { toast } = useToast()
     useEffect(()=>{
         //check if there's a cookie set with the id and name of the user
         //if there is, connect to the websocket server and request a new game
@@ -47,7 +50,7 @@ export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<str
             headers: myHeaders,
             redirect: "follow"
         };
-        fetch("http://localhost:3001/v1/game/coordinator", requestOptions)
+        fetch("http://localhost:3001/v2/game/coordinator", requestOptions)
             .then((response) => response.text())
             .then((result) => {
                 console.log(result)
@@ -56,77 +59,74 @@ export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<str
             .catch((error) => console.error(error));
     },[])
     useEffect(() => {
+        console.log('USING GAMESTATE:', game)
+    }, [game]);
+    useEffect(() => {
         if (gameID && !webSocket) {
-            console.log(`ws://localhost:3001/v1/game/coordinator/${gameID}?userid=${user.id}&username=${user.name}`);
-            const ws = new WebSocket(`ws://localhost:3001/v1/game/coordinator/${gameID}?userid=${user.id}&username=${user.name}`);
+            console.log(`ws://localhost:3001/v2/game/coordinator/${gameID}?userid=${user.id}&username=${user.name}`);
+            const ws = new WebSocket(`ws://localhost:3001/v2/game/coordinator/${gameID}?userid=${user.id}&username=${user.name}`);
             ws.onopen = () => {
                 console.log("Connected to the websocket server");
-                //send a message with all decks that are currently selected
-                console.log('Selected Decks', JSON.stringify({type: 'updateDecks', deckIDs: selectedDecks}))
-                ws.send(JSON.stringify({type: 'updateDecks', deckIDs: selectedDecks}))
             };
             ws.onmessage = (event) => {
                 const message = JSON.parse(event.data);
-                console.log('Msg', message, 'Users', userRef.current);
-                if (message.type === 'newUser') {
-                    setUsers((prevUsers) => {
-                        const updatedUsers = [...prevUsers, { id: message.userID, name: message.userName }];
-                        userRef.current = updatedUsers;
-                        return updatedUsers;
-                    });
+                //a message is always a complete game state so we don't have to handle it here but rather on the server
+                if(message.type === 'gameState'){
+                    console.log('Updated Game State Received')
+                    setGame(message.game)
                 }
-                if (message.type === 'removeUser'){
-                    setUsers((prevUsers) => {
-                        const updatedUsers = prevUsers.filter((user) => user.id !== message.userID);
-                        userRef.current = updatedUsers;
-                        return updatedUsers;
-                    });
-                }
-                if (message.type === 'updateUser'){
-                    setUsers((prevUsers) => {
-                        let updatedUsers = prevUsers.filter((user) => user.id !== message.userID);
-                        updatedUsers.push({id: message.userID, name: message.userName});
-                        console.log('Updated Users', updatedUsers);
-                        userRef.current = updatedUsers;
-                        return updatedUsers;
-                    });
-                }
-                if (message.type === 'startGame'){
-                    console.log('Starting game');
-                    window.location.href = `/game?gameID=${gameID}`;
+                if(message.type === 'startGame'){
+                    window.location.href = `/game?gameID=${gameID}`
                 }
             };
             setWebSocket(ws);
         }
+
+        if(gameID){
+            //update the gameID in the parent component
+            callback(gameID)
+        }
     }, [gameID]);
-    useEffect(()=>{
-        userRef.current = users
-    }, [users])
+
+    //update the user
     useEffect(() => {
         cookies.set('userName', user.name)
         webSocket?.send(JSON.stringify({type: 'updateUser', userID: user.id, userName: user.name}));
     }, [user]);
 
-    //handle the updating of the selected decks
-    useEffect(()=>{
-        if(webSocket){
-            webSocket.send(JSON.stringify({type: 'updateDecks', deckIDs: selectedDecks}))
-        }
-    }, [selectedDecks])
     function banUser(userID:string){
         //ensure the user is not banning themselves
         if(userID === user.id){
+            toast({description: 'You cannot ban yourself', title: 'Error:'})
             return
         }
         webSocket?.send(JSON.stringify({type: 'banUser', userID}));
+        toast({description: 'User has been banned', title: 'Success:'})
     }
     function startGame(){
-        if(users.length > 1){
-            webSocket?.send(JSON.stringify({type: 'startGame'}));
+        if(!game){
+            toast({description: 'Game not found', title: 'Error:'})
         }
-        else{
-            alert('You need at least 2 players to start the game')
+        let connectedUsers = 0
+        for(const user of Object.keys(game.clients)){
+            if(game.clients[user].isConnected){
+                connectedUsers++
+            }
         }
+        if(connectedUsers < 2){
+            toast({description: 'You need at least 2 players to start the game', title: 'Error:'})
+            return
+        }
+        if(!game?.allowedPacks || game?.allowedPacks.length < 1){
+            toast({description: 'You need at least 1 Deck to start the game', title: 'Error:'})
+            return
+        }
+        console.log('Starting the game')
+        if(!webSocket){
+            toast({description: 'Websocket not connected', title: 'Error:'})
+            return
+        }
+        webSocket.send(JSON.stringify({type: 'startGame'}))
     }
     return (
         <div className="gamingInputs">
@@ -147,31 +147,35 @@ export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<str
             </div>
             <div className="PlayerContainer">
                 {
-                    users.map((user)=>{
+                    game ? Object.keys(game.clients).map((user)=>{
                         console.log('rendering user:', user)
+                        const userobj = game.clients[user]
+                        if(!userobj.isConnected){
+                            return null
+                        }
                         return (
-                            <TooltipProvider key={user.id}>
+                            <TooltipProvider key={userobj.userID}>
                                 <Tooltip>
                                     <TooltipTrigger
                                         className="Player"
                                         onClick={() => {
-                                            banUser(user.id)
+                                            banUser(userobj.userID)
                                         }}
                                         style={{
-                                            backgroundColor: user.id === user.id ? 'red' : 'blue'
+                                            backgroundColor: userobj.userID === user.id ? 'red' : 'blue'
                                         }}
                                     >
-                                        <p>{user.name[0].toUpperCase()}</p>
+                                        <p>{userobj.userName[0].toUpperCase()}</p>
 
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Username: {user.name}</p>
+                                        <p>Username: {userobj.userName}</p>
                                         <p>(Click to remove this user)</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         )
-                    })
+                    }) : null
                 }
                 <TooltipProvider>
                     <Tooltip>
@@ -184,6 +188,7 @@ export default function GameHandlerHome({selectedDecks}:{selectedDecks:Array<str
                     </Tooltip>
                 </TooltipProvider>
             </div>
+            <Toaster />
         </div>
     )
 }

@@ -35,7 +35,7 @@ export default function Handler(){
             cookies.set('userName', randomName)
         }
         console.log('User ID: ', user)
-        const ws = new WebSocket(`ws://localhost:3001/v1/game/coordinator/${searchParams.get('gameID')}?userid=${user}&username=${cookies.get('userName')}`);
+        const ws = new WebSocket(`ws://localhost:3001/v2/game/coordinator/${searchParams.get('gameID')}?userid=${user}&username=${cookies.get('userName')}`);
         ws.onopen = () => {
             console.log("Connected to the websocket server");
         };
@@ -47,6 +47,10 @@ export default function Handler(){
             let message = JSON.parse(event.data)
             if(message.type == 'banUser'){
                 window.alert('You have been banned from this game, redirecting to homepage')
+                window.location.href = '/'
+            }
+            if(message.type == 'nah'){
+                window.alert('You are banned from this game.')
                 window.location.href = '/'
             }
             if(message.type == 'error'){

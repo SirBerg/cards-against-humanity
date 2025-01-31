@@ -3,6 +3,7 @@ import {useState, useEffect} from "react";
 import { CheckCheck } from 'lucide-react';
 import './deck-layout.css'
 import GameHandlerHome from "@/components/home/gameHandlerHome";
+import {useCookies} from "next-client-cookies";
 
 
 export function DeckContainer({manifest}: {manifest: Array<any>}) {
@@ -10,6 +11,8 @@ export function DeckContainer({manifest}: {manifest: Array<any>}) {
     const [showOfficial, setShowOfficial] = useState<boolean>(false)
     const [officialIsSelected, setOfficialIsSelected] = useState<boolean>(true)
     const [customIsSelected, setCustomIsSelected] = useState<boolean>(false)
+    const [gameID, setGameID] = useState<string>('')
+    const cookies = useCookies()
     useEffect(()=>{
         let initialSelectedDecks = []
         for(const decks of manifest) {
@@ -20,7 +23,6 @@ export function DeckContainer({manifest}: {manifest: Array<any>}) {
         setSelectedDecks(initialSelectedDecks)
     }, [])
     useEffect(() => {
-
         let newSelectedDecks = []
         if(officialIsSelected) {
             for(const decks of manifest) {
@@ -39,14 +41,40 @@ export function DeckContainer({manifest}: {manifest: Array<any>}) {
         setShowOfficial(false)
         setSelectedDecks(newSelectedDecks)
     }, [officialIsSelected, customIsSelected]);
+
+    //this handles the sending of updates to the selected packs to the server
+    useEffect(() => {
+        if(!gameID || gameID == '') {
+            console.log('Will not update packs without a game ID')
+            return
+        }
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+        myHeaders.append("userID", cookies.get('userID') as string);
+        const raw = JSON.stringify({
+            "packs": selectedDecks
+        });
+        const requestOptions = {
+            method: "PATCH",
+            headers: myHeaders,
+            body: raw,
+            redirect: "follow"
+        };
+        fetch(`http://localhost:3001/v2/game/coordinator/${gameID}/packs`, requestOptions)
+            .then((response) => response.text())
+            .then((result) => console.log(result))
+            .catch((error) => console.error(error));
+    }, [selectedDecks, gameID]);
+    useEffect(() => {
+        console.log('GAME ID IN DECK COMPONENT', gameID)
+    }, [gameID])
     return (
         <div>
-            <GameHandlerHome selectedDecks={selectedDecks}/>
+            <GameHandlerHome callback={((gameID:string)=>{setGameID(gameID)})} />
             <div className="deckContainer">
                 <button
                     onClick={() => {
                         setOfficialIsSelected(!officialIsSelected)
-
                     }}
                     className={`deckButtonInactive ${officialIsSelected ? "deckButtonActive" : null}`}>
                     <h1>
@@ -89,6 +117,5 @@ export function DeckContainer({manifest}: {manifest: Array<any>}) {
                 </div>
             </div>
         </div>
-
     )
 }
