@@ -10,7 +10,9 @@ export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{i
                         <div>
                             <div className="whiteCard">
                                 {card.text}
+                                <div className="whiteCardPackName">
                                 {card.pack}
+                                </div>
                             </div>
                             {selected ?
                                 (<button className="whiteCardSubmitButton">
