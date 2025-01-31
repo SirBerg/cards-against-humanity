@@ -23,6 +23,7 @@ export default function Game(){
     const { toast } = useToast()
     const [cards, setCards] = useState<{[key:string]: { content:string, pack:string }}>({})
     const [users, setUsers] = useState<Array<{id:string, name:string}>>([])
+    const [blackCard, setBlackCard] = useState({content:'', pack:'', id:''})
     useEffect(() => {
         //check if the user has a cookie set with their ID and name
         //if not, create them
@@ -42,6 +43,7 @@ export default function Game(){
             ws.send(JSON.stringify({type: 'updateReadyState'}))
             ws.send(JSON.stringify({type: 'getUsers'}))
             ws.send(JSON.stringify({type: 'getCards', 'cardCount': 5}))
+            ws.send(JSON.stringify({type: 'getBlackCard'}))
         }
         ws.onmessage = (event) => {
             let message = JSON.parse(event.data)
@@ -73,6 +75,9 @@ export default function Game(){
                 }
                 console.log(currentCards)
                 setCards(currentCards)
+            }
+            if(message.type == 'blackCard'){
+                setBlackCard({content: message.cardText, pack: message.pack, id: message.cardID})
             }
             console.log(message)
         }
@@ -113,7 +118,7 @@ export default function Game(){
     * */
     return(
         <div className="gameMain">
-            <BlackCard />
+            <BlackCard card={blackCard}/>
             {
                 cards ? <CardSelector cards={cards} callback={requestNewCards}/> : null
             }

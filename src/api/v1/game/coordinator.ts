@@ -33,6 +33,7 @@ export type validMessageTypes =
     | 'getReadyState'
     | 'getUsers'
     | 'getCards'
+    | 'getBlackCard'
 export const messageTypes: Array<validMessageTypes> = [
     'newUser',
     'removeUser',
@@ -51,7 +52,8 @@ export const messageTypes: Array<validMessageTypes> = [
     'updateUser',
     'getUsers',
     'getReadyState',
-    'getCards'
+    'getCards',
+    'getBlackCard'
 ]
 export default async function coordinator(ws: WebSocket, req: Request, clients: Array<{
     userID: string,
@@ -136,6 +138,15 @@ export default async function coordinator(ws: WebSocket, req: Request, clients: 
                 ws.send(JSON.stringify({type: 'card', cardID: card.id, cardText: card.content, pack: card.name}))
             })
             return
+        }
+        if(message.type == 'getBlackCard' && isStarted){
+            const card = db.query(`
+                SELECT cards.id as id, cards.content as content, m.name as name FROM cards
+                    INNER JOIN main.manifest as m ON cards.packID = m.id
+                WHERE type = 'black' AND packID IN ('0194b11c8caf7bc696495dbbc65732fc') ORDER BY RANDOM() LIMIT 1;
+                `).all()
+            console.log({type: 'blackCard', cardID: card[0].id, cardText: card[0].content, pack: card[0].name})
+            ws.send(JSON.stringify({type: 'blackCard', cardID: card[0].id, cardText: card[0].content, pack: card[0].name}))
         }
         //handle the logic to add or remove a deck from the game
         if (message.type == 'updateDecks') {

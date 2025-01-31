@@ -27,11 +27,11 @@ export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{i
     )
 }
 
-export function BlackCard() {
+export function BlackCard({card}:{card:{content:string, pack:string, id:string}}) {
     return (
         <div className="blackCard-Container">
             <div className="blackCard">
-                This is a test Black Card!
+                {card.content}
             </div>
             <button className="submitButton">
                 Confirm
