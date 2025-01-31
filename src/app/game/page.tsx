@@ -6,7 +6,8 @@ import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/hooks/use-toast"
 import Scoreboard from "@/components/game/scoreboard";
 import {uuidv7} from "@/utils/uuid";
-import CardSelector from "@/components/game/cards";
+import CardSelector, {BlackCard} from "@/components/game/cards";
+import './game.css'
 export default function Game(){
     const [game, setGame] = useState({
         gameID:'',
@@ -20,6 +21,7 @@ export default function Game(){
     const searchParams = useSearchParams();
     const cookies = useCookies()
     const { toast } = useToast()
+    const [cards, setCards] = useState<{[key:string]: { content:string, pack:string }}>({})
     const [users, setUsers] = useState<Array<{id:string, name:string}>>([])
     useEffect(() => {
         //check if the user has a cookie set with their ID and name
@@ -39,6 +41,7 @@ export default function Game(){
         ws.onopen = ()=>{
             ws.send(JSON.stringify({type: 'updateReadyState'}))
             ws.send(JSON.stringify({type: 'getUsers'}))
+            ws.send(JSON.stringify({type: 'getCards', 'cardCount': 5}))
         }
         ws.onmessage = (event) => {
             let message = JSON.parse(event.data)
@@ -60,6 +63,17 @@ export default function Game(){
             if(message.type == 'getUsers'){
                 setUsers(message.users)
             }
+            if(message.type == 'card'){
+                //get the current cards
+                const currentCards = cards;
+                //add the new cards (responsibility of removing cards falls within the playCard function, so we can assume that the cards are less than 5)
+                currentCards[message.cardID] = {
+                    content: message.cardText,
+                    pack: message.pack
+                }
+                console.log(currentCards)
+                setCards(currentCards)
+            }
             console.log(message)
         }
         setWebsocket(ws)
@@ -67,7 +81,11 @@ export default function Game(){
     function updateScores(game){
         setGame(game)
     }
-
+    function requestNewCards(cardCount:number){
+        if(websocket && websocket.readyState == 1){
+            websocket.send(JSON.stringify({type: 'getCards', 'cardCount': cardCount}))
+        }
+    }
     useEffect(() => {
         console.log('Users have been updated', users)
         let gameTest = game
@@ -84,15 +102,21 @@ export default function Game(){
     useEffect(() => {
         console.log('Game has been updated', game)
     }, [game]);
-    return(
-        <div className="gameMain">
-            {
+    /*
+    *
+    * {
                 users?
                     <Scoreboard users={users} callback={updateScores}/>
                     :
                     null
             }
-            <CardSelector />
+    * */
+    return(
+        <div className="gameMain">
+            <BlackCard />
+            {
+                cards ? <CardSelector cards={cards} callback={requestNewCards}/> : null
+            }
             <Toaster />
         </div>
     )
