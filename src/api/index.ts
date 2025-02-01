@@ -1,10 +1,14 @@
 import express from 'express'
 import {Database} from 'bun:sqlite'
-import type {clientType, gamesType, clientCard, card} from '@/lib/types'
-import {drawWhiteCard} from '@/api/cards/whitecard'
-import {uuidv7} from "@/utils/uuid";
+import type {clientType, gamesType, clientCard, card, cardMemoryObject} from '@/lib/types'
+import {broadcastGameState, webserverInit, drawWhiteCard} from '@/api/lib'
+import {WebSocket} from "ws";
+import {Request} from "express";
 import cors from 'cors'
 import {Logger} from "@/lib/logger";
+import replaceCard from "@/api/v2/routes/replaceCard";
+import createGame from "@api/v2/routes/createGame";
+import websocketHandler from "@api/v2/routes/websocketHandler";
 const log = new Logger()
 log.setJsonLogging(false)
 log.setLogLevel('DEBUG')
@@ -33,130 +37,14 @@ gameDB.query(`
 var expressWs = require('express-ws')(app)
 app.use(cors())
 app.use(express.json())
-//get all the manifest IDs
-const manifestIDs = db.query('SELECT id FROM manifest').all().map((row)=>row.id)
-
-//create the cards object so we can avoid querying the database for every card
-const cards:Array<card> = db.query(`
-    SELECT 
-        cards.id as id, 
-        cards.content as content, 
-        cards.pickCount as pickCount, 
-        cards.packID as packID, 
-        m.name as packName,
-        cards.type as type
-    FROM cards INNER JOIN main.manifest m on cards.packID = m.id`).all()
-log.debug(`Found ${cards.length} cards in the database, building RAM object`)
-const memoryCards:{[key:string]: {
-    black: {[key:string]:{
-            id:string,
-            type:string,
-            content:string,
-            pickCount:number,
-            packID:string
-        }
-    }
-    white: {[key:string]:{
-            id:string,
-            type:string,
-            content:string,
-            pickCount:number,
-            packID:string
-        }
-    }
-    blackCount:number
-    whiteCount:number
-    packName:string
-}} = {}
-for(const card of cards){
-    if(!memoryCards[card.packID]){
-        memoryCards[card.packID] = {
-            black: {},
-            white: {},
-            blackCount: 0,
-            whiteCount: 0,
-            packName: card.packName
-        }
-    }
-    if(card.type == 'black'){
-        if(card.pickCount > 5){
-            continue
-        }
-        memoryCards[card.packID].blackCount++
-        memoryCards[card.packID].black[card.id] = card
-    }
-    else{
-        memoryCards[card.packID].whiteCount++
-        memoryCards[card.packID].white[card.id] = card
-    }
-}
-log.debug('Finished building RAM object')
-
+//initialize the webserver
+const {memoryCards, manifestIDs} = await webserverInit(log)
 
 let games:gamesType = {}
-function broadcastGameState(gameID:string){
-    //send the clients the game state
-    for(const usrID of Object.keys(games[gameID].websockets)){
-        const clientWS = games[gameID].websockets[usrID]
-        log.debug(`Sending game state to client ${usrID}`)
-        clientWS.send(
-            JSON.stringify(
-                {
-                    type:'gameState',
-                    game:{
-                        ownerID: games[gameID].ownerID,
-                        allowedPacks: games[gameID].allowedPacks,
-                        bannedIDs: games[gameID].bannedIDs,
-                        started: games[gameID].started,
-                        startedAt: games[gameID].startedAt,
-                        currentBlackCard: games[gameID].currentBlackCard,
-                        clients: games[gameID].clients
-                    }
-                }
-            )
-        )
-    }
-}
 
 //handle the discard of a card
-app.delete('/v2/game/coordinator/:gameid/client/:userid/card/:cardid', (req, res)=>{
-    //check if the game exists
-    log.logRequest(req.url, 'DELETE')
-    if(!req.params.gameid || Array.isArray(req.params.gameid) || !games[req.params.gameid]){
-        res.status(400).send('Game ID required')
-        return
-    }
-    //check if the user exists
-    if(!req.params.userid || Array.isArray(req.params.userid)){
-        res.status(400).send('User ID required')
-        return
-    }
-    //check if the card exists
-    if(!req.params.cardid || Array.isArray(req.params.cardid)){
-        res.status(400).send('Card ID required')
-        return
-    }
-
-    //check if the user is in the game
-    if(!games[req.params.gameid].clients[req.params.userid]){
-        res.status(404).send('User not found')
-        return
-    }
-
-    //check if the card is in the user's hand
-    const cardIndex = games[req.params.gameid].clients[req.params.userid].cards.findIndex((card)=>{
-        return card.id == req.params.cardid
-    })
-    if(cardIndex == -1){
-        res.status(404).send('Card not found')
-        return
-    }
-    log.debug(`Discarding card ${req.params.cardid} for user ${req.params.userid} in game ${req.params.gameid}`)
-    //remove the card from the user's hand
-    const cards = drawWhiteCard(req.params.gameid, req.params.userid, games, memoryCards, req.params.cardid)
-    games[req.params.gameid].clients[req.params.userid].cards = cards
-    broadcastGameState(req.params.gameid)
-    res.status(200)
+app.delete('/v2/game/coordinator/:gameid/client/:userid/card/:cardid', async (req, res)=>{
+    await replaceCard(req, res, games, memoryCards, log)
 })
 
 app.get('/v2/card/:packid/:cardid', (req, res)=>{
@@ -251,24 +139,25 @@ app.get('/v2/game/coordinator/:gameid/gamestate/:userid', (req, res)=>{
 })
 
 //create a new game with this endpoint
-app.post('/v2/game/coordinator', (req, res)=>{
+app.post('/v2/game/coordinator', async (req, res)=>{
     log.logRequest(req.url, 'POST')
-    //create a new game in the games table and return the ID to the sender
-    if(!req.headers.userid || !req.headers.username || Array.isArray(req.headers.userid) || Array.isArray(req.headers.username) || req.headers.userid == 'undefined' || req.headers.username == 'undefined'){
-        res.status(400).send('User ID and Name required')
-        return
-    }
-    const gameID = uuidv7()
-    log.debug(`Creating game with ID: ${gameID} and user ID: ${req.headers.userid}`)
-    gameDB.query('DELETE FROM games WHERE ownerID = ?').run(req.headers.userid)
-    gameDB.query('INSERT INTO games (id, ownerID, allowedPacks, allowedIDs, started, startedAt, ended, allowBlackCardDupes, blackCardsPlayed, bannedIDs) VALUES (?, ?, ? ,?, ?, ?, ?, ?, ?, ?)')
-        .run(gameID, req.headers.userid.replaceAll('"', ''), '[]', JSON.stringify([{userID: req.headers.userid.replaceAll('"', ''), userName: req.headers.username, points: 0}]), false, 'null', false, false, '[]', '[]')
-    res.status(200).json({gameID})
+    await createGame(games, req, res, log)
 })
 
 
-app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
-    function getRandomBlackCard(gameID:string):clientCard{
+app.ws('/v2/game/coordinator/:gameID', async(ws:WebSocket, req:Request)=>{
+    console.log('Websocket connection', req.url)
+    console.log(games)
+    await websocketHandler(ws, req, games, log)
+})
+
+app.listen(3001, ()=>{
+    log.info('Server is running on port 3001')
+})
+
+
+/*
+*     function getRandomBlackCard(gameID:string, game:gamesType):clientCard{
         function rand(){
             //get a random pack we should draw from
             let packID = Math.floor(Math.random() * games[gameID].allowedPacks.length)
@@ -320,7 +209,6 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
         return
     }
     const gameID = game.id
-
 
     //check if the game is already in the games object
     if(!games[gameID]){
@@ -411,7 +299,7 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
                 log.debug(`Starting game ${gameID}`)
                 games[gameID].starting = true
 
-                //this means we need to fill the black card as well as the cards held by the clients
+                //this means we need to fill the black card as well as the cards.ts held by the clients
                 //get a random black card
                 games[gameID].currentBlackCard = getRandomBlackCard(gameID)
                 //send a special startGame message to all clients
@@ -465,8 +353,4 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
             delete games[gameID]
         }
     }
-})
-
-app.listen(3001, ()=>{
-    log.info('Server is running on port 3001')
-})
+* */

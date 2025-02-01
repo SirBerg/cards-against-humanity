@@ -71,7 +71,7 @@ export default function Game(){
             console.log('CURRENT BLACK CARD', game?.currentBlackCard)
             setBlackCard(await getCard(game?.currentBlackCard.id, game?.currentBlackCard.packID))
 
-            //set the state of the user's cards
+            //set the state of the user's cards.ts
             let cards = []
             for(let card of game.clients[cookies.get('userID')].cards){
                 cards.push(await getCard(card.id, card.packID))

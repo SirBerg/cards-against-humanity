@@ -10,10 +10,10 @@ export type clientType = {
 export type gamesType = {
     [key:string]:{
         ownerID:string
-        allowedPacks:string
+        allowedPacks:string[]
         bannedIDs:[]
         started:boolean
-        startedAt:string
+        startedAt:string | null
         currentBlackCard:card
         clients:{[key:string]:clientType}
         websockets:{[key:string]:WebSocket}
@@ -46,3 +46,25 @@ export type clientCard = {
     id:string,
     packID:string
 }
+
+export type cardMemoryObject = {[key:string]: {
+        black: {[key:string]:{
+                id:string,
+                type:string,
+                content:string,
+                pickCount:number,
+                packID:string
+            }
+        }
+        white: {[key:string]:{
+                id:string,
+                type:string,
+                content:string,
+                pickCount:number,
+                packID:string
+            }
+        }
+        blackCount:number
+        whiteCount:number
+        packName:string
+    }}
