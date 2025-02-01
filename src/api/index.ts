@@ -1,6 +1,7 @@
 import express from 'express'
 import {Database} from 'bun:sqlite'
-import type {clientType, gamesType, clientCard} from '@/lib/types'
+import type {clientType, gamesType, clientCard, card} from '@/lib/types'
+import {drawWhiteCard} from '@/api/cards/whitecard'
 import {uuidv7} from "@/utils/uuid";
 import cors from 'cors'
 import {Logger} from "@/lib/logger";
@@ -117,6 +118,47 @@ function broadcastGameState(gameID:string){
     }
 }
 
+//handle the discard of a card
+app.delete('/v2/game/coordinator/:gameid/client/:userid/card/:cardid', (req, res)=>{
+    //check if the game exists
+    log.logRequest(req.url, 'DELETE')
+    if(!req.params.gameid || Array.isArray(req.params.gameid) || !games[req.params.gameid]){
+        res.status(400).send('Game ID required')
+        return
+    }
+    //check if the user exists
+    if(!req.params.userid || Array.isArray(req.params.userid)){
+        res.status(400).send('User ID required')
+        return
+    }
+    //check if the card exists
+    if(!req.params.cardid || Array.isArray(req.params.cardid)){
+        res.status(400).send('Card ID required')
+        return
+    }
+
+    //check if the user is in the game
+    if(!games[req.params.gameid].clients[req.params.userid]){
+        res.status(404).send('User not found')
+        return
+    }
+
+    //check if the card is in the user's hand
+    const cardIndex = games[req.params.gameid].clients[req.params.userid].cards.findIndex((card)=>{
+        return card.id == req.params.cardid
+    })
+    if(cardIndex == -1){
+        res.status(404).send('Card not found')
+        return
+    }
+    log.debug(`Discarding card ${req.params.cardid} for user ${req.params.userid} in game ${req.params.gameid}`)
+    //remove the card from the user's hand
+    const cards = drawWhiteCard(req.params.gameid, req.params.userid, games, memoryCards, req.params.cardid)
+    games[req.params.gameid].clients[req.params.userid].cards = cards
+    broadcastGameState(req.params.gameid)
+    res.status(200)
+})
+
 app.get('/v2/card/:packid/:cardid', (req, res)=>{
     log.logRequest(req.url, 'GET')
     if(!req.params.cardid || Array.isArray(req.params.cardid)){
@@ -134,10 +176,6 @@ app.get('/v2/card/:packid/:cardid', (req, res)=>{
         return
     }
     res.status(200).json(card)
-})
-
-app.get('/v2/pack/:packid', (req, res)=>{
-
 })
 
 //this handles updates to the packs made by the owner of a game
@@ -160,7 +198,6 @@ app.patch('/v2/game/coordinator/:gameid/packs', (req, res)=>{
         return
     }
     //update the allowed packs for this game
-    //games[req.params.gameid].allowedPacks = req.body
     if(!req.body || !req.body.packs || !Array.isArray(req.body.packs)){
         res.status(400).send('Packs required')
         return
@@ -175,6 +212,44 @@ app.patch('/v2/game/coordinator/:gameid/packs', (req, res)=>{
     res.status(200).send('OK')
     broadcastGameState(req.params.gameid)
 })
+
+app.get('/v2/game/coordinator/:gameid/gamestate/:userid', (req, res)=>{
+    if(!req.params.gameid || Array.isArray(req.params.gameid)){
+        res.status(400).send('Game ID required')
+        return
+    }
+    if(!req.params.userid || Array.isArray(req.params.userid)){
+        res.status(400).send('User ID required')
+        return
+    }
+    if(!games[req.params.gameid]){
+        res.status(404).send('Game not found')
+        return
+    }
+    if(!games[req.params.gameid].clients[req.params.userid]){
+        res.status(404).send('User not found')
+        return
+    }
+    //send the client the game state via the websocket
+    res.status(200)
+    games[req.params.gameid].websockets[req.params.userid].send(
+        JSON.stringify(
+            {
+                type:'gameState',
+                game:{
+                    ownerID: games[req.params.gameid].ownerID,
+                    allowedPacks: games[req.params.gameid].allowedPacks,
+                    bannedIDs: games[req.params.gameid].bannedIDs,
+                    started: games[req.params.gameid].started,
+                    startedAt: games[req.params.gameid].startedAt,
+                    currentBlackCard: games[req.params.gameid].currentBlackCard,
+                    clients: games[req.params.gameid].clients
+                }
+            }
+        )
+    )
+})
+
 //create a new game with this endpoint
 app.post('/v2/game/coordinator', (req, res)=>{
     log.logRequest(req.url, 'POST')
@@ -224,79 +299,6 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
             card = rand()
         }
         return card
-    }
-    //this function takes a gameID and a userID and updates their cards in such a way that they at most have 5 cards
-    function drawWhiteCard(gameID:string, userID:string, replaceCard?:string){
-        function getRandomWhiteCard():clientCard{
-            //get a random pack we should draw from
-            let packIndex = Math.floor(Math.random() * games[gameID].allowedPacks.length)
-            if(packIndex >= games[gameID].allowedPacks.length){
-                packIndex = games[gameID].allowedPacks.length-1
-            }
-            const pack = games[gameID].allowedPacks[packIndex]
-
-            const cardsPerPack = Object.keys(memoryCards[pack].white)
-
-            //make sure there are cards in this pack, else return immediately
-            if(cardsPerPack.length == 0){
-                return {id: 'undefined', packID:'undefined'}
-            }
-            //get a random card from that pack
-            let cardIndex = Math.floor(Math.random() * memoryCards[pack].whiteCount)
-            if(cardIndex >= cardsPerPack.length){
-                cardIndex = cardsPerPack.length-1
-            }
-            if(!cardsPerPack[cardIndex]){
-                return {id: 'undefined', packID:'undefined'}
-            }
-            const card = {
-                id: cardsPerPack[cardIndex],
-                packID: pack
-            }
-            return card
-        }
-
-        if(games[gameID].clients[userID].cards.length >= 5){
-            log.debug(`User ${userID} has or more cards, removing every card over 5`)
-            //remove every card over 5
-            while(games[gameID].clients[userID].cards.length > 5){
-                games[gameID].clients[userID].cards.pop()
-            }
-            return
-        }
-
-        //check if we need to replace a card
-        if(replaceCard){
-            log.debug(`Replacing card ${replaceCard} for user ${userID}`)
-            //TODO: Fix this
-            const index = games[gameID].clients[userID].cards.indexOf(replaceCard)
-            if(index != -1){
-                //remove the index
-                games[gameID].clients[userID].cards.splice(index, 1)
-                while(games[gameID].clients[userID].cards.length <= 4){
-                    const card = getRandomWhiteCard()
-                    if(card.id == 'undefined'){
-                        log.debug('Card is undefined, trying another one')
-                        continue
-                    }
-                    games[gameID].clients[userID].cards.push(card)
-                }
-            }
-            else{
-                log.error(`Card ${replaceCard} not found in user ${userID}'s hand`)
-                return
-            }
-        }
-
-        //fill the user's hand with cards until they have 5
-        while(games[gameID].clients[userID].cards.length <= 4){
-            const card = getRandomWhiteCard()
-            if(card.id == 'undefined'){
-                log.debug('Card is undefined, trying another one')
-                continue
-            }
-            games[gameID].clients[userID].cards.push(card)
-        }
     }
 
 
@@ -369,7 +371,8 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
     //check if the game is currently starting
     if(games[gameID].starting){
         //draw a white card for the user
-        drawWhiteCard(gameID, newClient.userID)
+        const newCards = drawWhiteCard(gameID, newClient.userID, games, memoryCards)
+        games[gameID].clients[newClient.userID].cards = newCards
     }
     log.debug(`Client ${newClient.userID} connected to game ${gameID}, broadcasting gameState`)
     broadcastGameState(gameID)

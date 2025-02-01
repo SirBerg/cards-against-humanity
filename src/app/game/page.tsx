@@ -126,7 +126,7 @@ export default function Game(){
         return(
             <div className="gameMain">
                 {blackCard ? <BlackCard card={blackCard}/> : null}
-                {userCards.length > 0 ? <CardSelector cards={userCards}/> : null}
+                {userCards.length > 0 ? <CardSelector cards={userCards} game={game}/> : null}
                 <Toaster />
             </div>
         )
