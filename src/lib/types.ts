@@ -1,11 +1,11 @@
 export type clientType = {
     userID:string
     userName:string
-    cards:Array<{cardID:string, pack:string}>
+    cards:Array<clientCard>
     points:number
     isConnected:boolean,
     isTurn:boolean,
-    submittedCards:Array<{cardID:string, pack:string, revealed:boolean}>
+    submittedCards:Array<clientCard>
 }
 export type gamesType = {
     [key:string]:{
@@ -14,7 +14,7 @@ export type gamesType = {
         bannedIDs:[]
         started:boolean
         startedAt:string
-        currentBlackCard:{cardID:string, pack:string}
+        currentBlackCard:card
         clients:{[key:string]:clientType}
         websockets:{[key:string]:WebSocket}
         requests:{[key:string]:Request}
@@ -29,8 +29,20 @@ export type gameType = {
     bannedIDs:string
     started:boolean
     startedAt:string
-    currentBlackCard:{cardID:string, pack:string}
+    currentBlackCard:clientCard
     clients:{[key:string]:clientType}
     starting:boolean
 }
-export type card = {content:string, pack:string, id:string}
+export type card = {
+    content:string,
+    id:string,
+    pickCount:number,
+    packID:string,
+    packName:string,
+    type:"white" | "black"
+}
+
+export type clientCard = {
+    id:string,
+    packID:string
+}

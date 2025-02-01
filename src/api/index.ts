@@ -1,7 +1,6 @@
 import express from 'express'
 import {Database} from 'bun:sqlite'
-import coordinator, {gameTable} from './v1/game/coordinator'
-import type {clientType, gamesType} from '@/lib/types'
+import type {clientType, gamesType, clientCard} from '@/lib/types'
 import {uuidv7} from "@/utils/uuid";
 import cors from 'cors'
 import {Logger} from "@/lib/logger";
@@ -37,7 +36,15 @@ app.use(express.json())
 const manifestIDs = db.query('SELECT id FROM manifest').all().map((row)=>row.id)
 
 //create the cards object so we can avoid querying the database for every card
-const cards = db.query('SELECT * FROM cards').all()
+const cards:Array<card> = db.query(`
+    SELECT 
+        cards.id as id, 
+        cards.content as content, 
+        cards.pickCount as pickCount, 
+        cards.packID as packID, 
+        m.name as packName,
+        cards.type as type
+    FROM cards INNER JOIN main.manifest m on cards.packID = m.id`).all()
 log.debug(`Found ${cards.length} cards in the database, building RAM object`)
 const memoryCards:{[key:string]: {
     black: {[key:string]:{
@@ -58,6 +65,7 @@ const memoryCards:{[key:string]: {
     }
     blackCount:number
     whiteCount:number
+    packName:string
 }} = {}
 for(const card of cards){
     if(!memoryCards[card.packID]){
@@ -65,10 +73,14 @@ for(const card of cards){
             black: {},
             white: {},
             blackCount: 0,
-            whiteCount: 0
+            whiteCount: 0,
+            packName: card.packName
         }
     }
     if(card.type == 'black'){
+        if(card.pickCount > 5){
+            continue
+        }
         memoryCards[card.packID].blackCount++
         memoryCards[card.packID].black[card.id] = card
     }
@@ -116,12 +128,18 @@ app.get('/v2/card/:packid/:cardid', (req, res)=>{
         return
     }
     const card = memoryCards[req.params.packid].black[req.params.cardid] ? memoryCards[req.params.packid].black[req.params.cardid] : memoryCards[req.params.packid].white[req.params.cardid]
+
     if(!card){
         res.status(404).json({error:'Card not found'})
         return
     }
     res.status(200).json(card)
 })
+
+app.get('/v2/pack/:packid', (req, res)=>{
+
+})
+
 //this handles updates to the packs made by the owner of a game
 app.patch('/v2/game/coordinator/:gameid/packs', (req, res)=>{
     log.logRequest(req.url, 'PATCH')
@@ -175,7 +193,7 @@ app.post('/v2/game/coordinator', (req, res)=>{
 
 
 app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
-    function getRandomBlackCard(gameID:string):{cardID:string, pack:string}{
+    function getRandomBlackCard(gameID:string):clientCard{
         function rand(){
             //get a random pack we should draw from
             let packID = Math.floor(Math.random() * games[gameID].allowedPacks.length)
@@ -185,28 +203,31 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
             const pack = games[gameID].allowedPacks[packID]
             const blackCardsPerPack = Object.keys(memoryCards[pack].black)
             if(blackCardsPerPack.length == 0){
-                return {cardID: 'undefined', pack: 'undefined'}
+                return {id: 'undefined', packID:'undefined'}
             }
             let cardIndex = Math.floor(Math.random() * memoryCards[pack].blackCount)
             if(cardIndex >= blackCardsPerPack.length) {
                 cardIndex = blackCardsPerPack.length - 1
             }
             if(!blackCardsPerPack[cardIndex]){
-                return {cardID: 'undefined', pack: 'undefined'}
+                return {id: 'undefined', packID:'undefined'}
             }
             //get a random card from that pack
-            const card = memoryCards[pack].black[blackCardsPerPack[cardIndex]]
-            return {cardID: card.id, pack: pack}
+            const card = {
+                id: blackCardsPerPack[cardIndex],
+                packID: pack
+            }
+            return card
         }
         let card = rand()
-        while(card.cardID == 'undefined'){
+        while(card.id == 'undefined'){
             card = rand()
         }
         return card
     }
     //this function takes a gameID and a userID and updates their cards in such a way that they at most have 5 cards
     function drawWhiteCard(gameID:string, userID:string, replaceCard?:string){
-        function getRandomWhiteCard():{cardID:string, pack:string}{
+        function getRandomWhiteCard():clientCard{
             //get a random pack we should draw from
             let packIndex = Math.floor(Math.random() * games[gameID].allowedPacks.length)
             if(packIndex >= games[gameID].allowedPacks.length){
@@ -218,7 +239,7 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
 
             //make sure there are cards in this pack, else return immediately
             if(cardsPerPack.length == 0){
-                return {cardID: 'undefined', pack: 'undefined'}
+                return {id: 'undefined', packID:'undefined'}
             }
             //get a random card from that pack
             let cardIndex = Math.floor(Math.random() * memoryCards[pack].whiteCount)
@@ -226,10 +247,13 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
                 cardIndex = cardsPerPack.length-1
             }
             if(!cardsPerPack[cardIndex]){
-                return {cardID: 'undefined', pack: 'undefined'}
+                return {id: 'undefined', packID:'undefined'}
             }
-            const card = memoryCards[pack].white[cardsPerPack[cardIndex]]
-            return {cardID: card.id, pack: pack}
+            const card = {
+                id: cardsPerPack[cardIndex],
+                packID: pack
+            }
+            return card
         }
 
         if(games[gameID].clients[userID].cards.length >= 5){
@@ -244,13 +268,14 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
         //check if we need to replace a card
         if(replaceCard){
             log.debug(`Replacing card ${replaceCard} for user ${userID}`)
+            //TODO: Fix this
             const index = games[gameID].clients[userID].cards.indexOf(replaceCard)
             if(index != -1){
                 //remove the index
                 games[gameID].clients[userID].cards.splice(index, 1)
                 while(games[gameID].clients[userID].cards.length <= 4){
                     const card = getRandomWhiteCard()
-                    if(card.cardID == 'undefined'){
+                    if(card.id == 'undefined'){
                         log.debug('Card is undefined, trying another one')
                         continue
                     }
@@ -266,7 +291,7 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
         //fill the user's hand with cards until they have 5
         while(games[gameID].clients[userID].cards.length <= 4){
             const card = getRandomWhiteCard()
-            if(card.cardID == 'undefined'){
+            if(card.id == 'undefined'){
                 log.debug('Card is undefined, trying another one')
                 continue
             }
@@ -391,6 +416,18 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
                     games[gameID].websockets[usrID].send(JSON.stringify({type:'startGame'}))
                 }
             }
+
+            //submit a card
+            //TODO: Implement this
+
+            //start the judging phase
+            //TODO: Implement this
+
+            //award points
+            //TODO: Implement this
+
+            //start the next round
+            //TODO: Implement this
         }
         catch(e){
             log.error(`Error parsing JSON: ${e}`)
@@ -426,7 +463,6 @@ app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
         }
     }
 })
-
 
 app.listen(3001, ()=>{
     log.info('Server is running on port 3001')

@@ -68,13 +68,15 @@ export default function Game(){
         console.log('USING GAMESTATE:', game)
         //set the state of the black card
         async function wrapper(){
-            setBlackCard(await getCard(game?.currentBlackCard.cardID, game?.currentBlackCard.pack))
+            console.log('CURRENT BLACK CARD', game?.currentBlackCard)
+            setBlackCard(await getCard(game?.currentBlackCard.id, game?.currentBlackCard.packID))
 
             //set the state of the user's cards
             let cards = []
             for(let card of game.clients[cookies.get('userID')].cards){
-                cards.push(await getCard(card.cardID, card.pack))
+                cards.push(await getCard(card.id, card.packID))
             }
+            console.log(cards)
             setUserCards(cards)
         }
         if(game){

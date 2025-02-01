@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import './cards.css'
-export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{id:string, text:string, pack:string}}) {
+import {card} from "@/lib/types";
+export function Card({selectedCards, card}:{selectedCards:Array<string>, card:card}) {
     const [selected, setSelected] = useState(false)
     return(
         <div className={`whiteCardContainer ${selected?`whiteCardContainerActive`:null}`} onClick={()=>{setSelected(!selected)}}>
@@ -9,15 +10,22 @@ export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{i
                     (
                         <div>
                             <div className="whiteCard">
-                                {card.text}
+                                {card.content}
                                 <div className="whiteCardPackName">
-                                {card.pack}
+                                {card.packName}
                                 </div>
                             </div>
                             {selected ?
-                                (<button className="whiteCardSubmitButton">
-                                    Play
-                                </button>) : null}
+                                (
+                                    <div className="cardButtons">
+                                        <button className="whiteCardSubmitButton">
+                                            Play
+                                        </button>
+                                        <button className="whiteCardDiscardButton">
+                                            Discard
+                                        </button>
+                                    </div>
+                                ) : null}
                         </div>
                     ):
                 <div className="whiteCard">
@@ -29,27 +37,29 @@ export function Card({selectedCards, card}:{selectedCards:Array<string>, card:{i
     )
 }
 
-export function BlackCard() {
+export function BlackCard({card}:{card:card}) {
     return (
         <div className="blackCard-Container">
             <div className="blackCard">
-                This is a test Black Card!
+                {card.content}
             </div>
             <button className="submitButton">
                 Confirm
             </button>
+
         </div>
     )
 }
 
-export default function CardSelector({cards, callback}:{cards:{[key:string]:{content:string, pack:string }}, callback:Function}) {
+export default function CardSelector({cards, callback}:{cards:Array<card>, callback:Function}) {
     const [submittedCards, setSubmittedCards] = useState<Array<string>>([])
     return (
         <div className="cardSelector">
             {
-                Object.keys(cards).map((card)=>{
+                cards.map((card)=>{
+                    console.log(cards[card])
                     return(
-                        <Card selectedCards={submittedCards} card={{id:card, text:cards[card].content, pack:cards[card].pack}} key={card}/>
+                        <Card selectedCards={submittedCards} card={card} key={card.id}/>
                     )
                 })
             }
