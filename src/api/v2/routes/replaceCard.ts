@@ -2,14 +2,13 @@ import { Request, Response} from 'express'
 import {cardMemoryObject, clientCard, gamesType} from "@/lib/types";
 import {Logger} from "@/lib/logger";
 import {broadcastGameState} from "@api/lib/broadcast";
-import {drawWhiteCard} from "@api/lib/cards";
+import {getRandomWhiteCard} from "@api/lib/cards";
 
 function validateCardRequest(req:Request, res:Response, cardsInMemory:cardMemoryObject, games:gamesType, log:Logger):Promise<{error:string}>{
     return new Promise((resolve, reject)=>{
-        const cardID = req.params.card
+        const cardID = req.params.cardID
         const gameID = req.params.gameID
         const clientID = req.params.clientID
-
         //validate the request
         if(!cardID || !gameID || !clientID){
             log.debug(`cardID, gameID or clientID not provided`)
@@ -42,19 +41,13 @@ export default async function replaceCard(req:Request, res:Response, games:games
         return
     }
     //here, we can assume that everything exists
-    const cardID = req.params.card
+    const cardID = req.params.cardID
     const gameID = req.params.gameID
     const clientID = req.params.clientID
 
     //replace the card
-
     //get a random card
-    let card:clientCard = drawWhiteCard(games, gameID, cardsInMemory)
-    //make sure the card is not undefined
-    while(card.id === 'undefined'){
-        log.debug('Card is undefined, trying again')
-        card = drawWhiteCard(games, gameID, cardsInMemory)
-    }
+    const card:clientCard = getRandomWhiteCard(games, gameID, cardsInMemory)
 
     //find the card in the hand of the client
     const cardIndex = games[gameID].clients[clientID].cards.findIndex((card)=>card.id === cardID)

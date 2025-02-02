@@ -1,9 +1,9 @@
 import {useEffect, useState} from "react";
 import './cards.css'
-import {card, gameType} from "@/lib/types";
+import {card, clientCard, gameType} from "@/lib/types";
 import {useCookies} from "next-client-cookies";
 import {useSearchParams} from "next/navigation";
-export function Card({selectedCards, card, game}:{selectedCards:Array<string>, card:card, game:gameType}) {
+export function Card({selectedCards, card, game, enableCard}:{selectedCards:Array<string>, card:card, game:gameType, enableCard:Function}) {
     const cookies = useCookies()
     const [selected, setSelected] = useState(false)
     const searchParams = useSearchParams();
@@ -44,7 +44,7 @@ export function Card({selectedCards, card, game}:{selectedCards:Array<string>, c
                             {selected ?
                                 (
                                     <div className="cardButtons">
-                                        <button className="whiteCardSubmitButton">
+                                        <button className="whiteCardSubmitButton" onClick={()=>enableCard({id:card.id, pack:card.packID})}>
                                             Play
                                         </button>
                                         <button className="whiteCardDiscardButton" onClick={()=>discardCard()}>
@@ -78,14 +78,24 @@ export function BlackCard({card}:{card:card}) {
 }
 
 export default function CardSelector({cards, callback, game}:{cards:Array<card>, callback:Function, game:gameType}) {
-    const [submittedCards, setSubmittedCards] = useState<Array<string>>([])
+    const [submittedCards, setSubmittedCards] = useState<Array<clientCard>>([])
+    useEffect(() => {
+        console.log('Submitted cards:', submittedCards)
+    }, [submittedCards]);
+    const enableCard = (card:clientCard) =>{
+        if(submittedCards.length < game.currentBlackCard.pickCount){
+            setSubmittedCards([...submittedCards, card])
+        }else{
+            console.log('Too many cards selected')
+        }
+    }
     return (
         <div className="cardSelector">
             {
                 cards.map((card)=>{
                     console.log(cards[card])
                     return(
-                        <Card selectedCards={submittedCards} card={card} key={card.id} game={game}/>
+                        <Card selectedCards={submittedCards} card={card} key={card.id} game={game} enableCard={enableCard}/>
                     )
                 })
             }

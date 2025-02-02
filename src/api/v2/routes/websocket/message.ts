@@ -1,6 +1,8 @@
 import {Logger} from "@/lib/logger";
-import {gamesType} from "@/lib/types";
+import {cardMemoryObject, gamesType, packManifest} from "@/lib/types";
 import {broadcastGameState} from "@api/lib";
+import {validateGameState} from "@api/lib/game";
+import {getRandomBlackCard} from "@api/lib/cards";
 
 const allowedCommands:string[] = [
     "updateUser",
@@ -9,12 +11,10 @@ const allowedCommands:string[] = [
     "startGame"
 ]
 
-export default function onMessage(event:any, games:gamesType, gameID:string, userID:string, log:Logger){
+export default function onMessage(event:any, games:gamesType, gameID:string, userID:string, memoryCards:cardMemoryObject, packManifests:packManifest, log:Logger){
     //Check if the event data is a JSON object
     try{
-        if (typeof event.data === "string") {
-            event = JSON.parse(event.data)
-        }
+        event = JSON.parse(event)
     }
     catch(e){
         log.debug(`Invalid JSON: ${event}, error was: ${e}`)
@@ -73,9 +73,29 @@ export default function onMessage(event:any, games:gamesType, gameID:string, use
     //Start game
     if(event.type == 'startGame' && games[gameID].ownerID == userID){
         log.debug('Starting game')
-        games[gameID].starting = true
 
-        //Broadcast the game state
-        broadcastGameState(gameID, games, log)
+        //Validate the Game state (like checking if there are enough players etc.)
+        const isValid = validateGameState(games, gameID, log)
+        if(!isValid){
+            log.debug('Game state is invalid, not starting game')
+            return
+        }
+
+        games[gameID].starting = true
+        games[gameID].started = true
+        games[gameID].startedAt = new Date().getTime().toString()
+
+        //Get a random black card
+        games[gameID].currentBlackCard = getRandomBlackCard(games, gameID, memoryCards)
+
+        //Broadcast the special startGame message to all clients
+        for(const client of Object.keys(games[gameID].websockets)){
+            games[gameID].websockets[client].send(JSON.stringify({'type':'startGame'}))
+        }
     }
+
+    //Handle Game Specific Tasks such as revealing Cards
+    //Cards have to be submitted by calling the /v2/game/coordinator/:gameID/submit/:userID (POST) Endpoint
+    //Winner has to be selected by calling the /v2/game/coordinator/:gameID/winner/:userID (POST) Endpoint
+
 }

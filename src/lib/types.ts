@@ -29,7 +29,7 @@ export type gameType = {
     bannedIDs:string
     started:boolean
     startedAt:string
-    currentBlackCard:clientCard
+    currentBlackCard:card
     clients:{[key:string]:clientType}
     starting:boolean
 }
@@ -67,4 +67,6 @@ export type cardMemoryObject = {[key:string]: {
         blackCount:number
         whiteCount:number
         packName:string
-    }}
+}}
+
+export type packManifest = Array<string>
