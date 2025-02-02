@@ -26,7 +26,7 @@ export default async function websocketHandler(ws:WebSocket, req:Request, games:
 
     ws.on('message', (message)=>{
         log.debug(`Received message from client ${playerID}: ${message}`)
-        onMessage()
+        onMessage(message, games, gameID, playerID, log)
     })
 
     //when the connection is closed, log it
