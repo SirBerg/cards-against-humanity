@@ -43,7 +43,6 @@
     transition: 0.3s;
     color: white;
     border: 1px solid white;
-    background-color: purple;
     margin-left: 10px;
     margin-right: 10px;
 }
@@ -110,8 +109,15 @@
     margin-left: auto;
     margin-right: auto;
 }
-
+.cardIsSubmitted{
+    background-color: gray !important;
+}
 .cardButtons{
     display: grid;
     grid-template-columns: 1fr 1fr;
+}
+.insertedPhrase{
+    color: black;
+    background-color: white;
+    padding: 2px;
 }

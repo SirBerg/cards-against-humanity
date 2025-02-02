@@ -16,8 +16,9 @@ export default function Game(){
     const cookies = useCookies()
     const { toast } = useToast()
     const [user, setUser] = useState({id:'', name:''})
-    const [blackCard, setBlackCard] = useState<card>(null)
     const [userCards, setUserCards] = useState<Array<card>>([])
+    const [playedCards, setPlayedCards] = useState<Array<card>>([])
+    const [blackCardInfos, setBlackCardInfos] = useState<{blackCard:card, playedCards:Array<card>}>({blackCard:null, playedCards:[]})
     const [game, setGame] = useState<
         gameType | null
     >(null)
@@ -69,9 +70,9 @@ export default function Game(){
         //set the state of the black card
         async function wrapper(){
             console.log('CURRENT BLACK CARD', game?.currentBlackCard)
-            setBlackCard(await getCard(game?.currentBlackCard.id, game?.currentBlackCard.packID))
+            setBlackCardInfos({blackCard:await getCard(game?.currentBlackCard.id, game?.currentBlackCard.packID), playedCards:[]})
 
-            //set the state of the user's cards.ts
+            //set the state of the user's cards
             let cards = []
             for(let card of game.clients[cookies.get('userID')].cards){
                 cards.push(await getCard(card.id, card.packID))
@@ -106,6 +107,12 @@ export default function Game(){
 
     }
 
+    useEffect(() => {
+        console.log('State changed: ', playedCards)
+    }, [playedCards]);
+    useEffect(() => {
+        console.log('Black Card state changed: ', blackCardInfos)
+    }, [blackCardInfos]);
     //if the game isn't empty anymore, we want to show the game
     if(game){
 
@@ -113,7 +120,7 @@ export default function Game(){
         if(game.clients[cookies.get('userID')].isTurn){
             return(
                 <div className="gameMain">
-                    {blackCard ? <BlackCard card={blackCard}/> : null}
+                    <BlackCard cardInfos={blackCardInfos}/>
                     <div>
                         <h2>It&#39;s your turn! Sit tight and wait for the other to submit something</h2>
                     </div>
@@ -125,8 +132,11 @@ export default function Game(){
         //this is the default screen shown to the user
         return(
             <div className="gameMain">
-                {blackCard ? <BlackCard card={blackCard}/> : null}
-                {userCards.length > 0 ? <CardSelector cards={userCards} game={game}/> : null}
+                <BlackCard cardInfos={blackCardInfos}/>
+                {userCards.length > 0 ? <CardSelector cards={userCards} game={game} callback={(playedCards:Array<card>)=>{
+                    const blackCardInfo = {blackCard:blackCardInfos.blackCard, playedCards:playedCards}
+                    setBlackCardInfos(blackCardInfo)
+                }}/> : null}
                 <Toaster />
             </div>
         )

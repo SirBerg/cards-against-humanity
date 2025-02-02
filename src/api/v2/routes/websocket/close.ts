@@ -17,7 +17,14 @@ export default function onClose(games:gamesType, gameID:string, playerID:string,
     }
 
     //Set their turn to false if it's their turn
-    games[gameID].clients[playerID].isTurn = false
+    if(games[gameID].clients[playerID].isTurn){
+        games[gameID].clients[playerID].isTurn = false
+
+        //update the turn to the next user in the queue
+        if(games[gameID].queue.length > 0){
+            games[gameID].clients[games[gameID].queue[0]].isTurn = true
+        }
+    }
 
     //Check if there are now no players in the game and if so, delete the game if it's not set to "starting"
     if(games[gameID].queue.length === 0 && !games[gameID].starting){

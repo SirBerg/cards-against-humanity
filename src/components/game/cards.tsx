@@ -3,10 +3,11 @@ import './cards.css'
 import {card, clientCard, gameType} from "@/lib/types";
 import {useCookies} from "next-client-cookies";
 import {useSearchParams} from "next/navigation";
-export function Card({selectedCards, card, game, enableCard}:{selectedCards:Array<string>, card:card, game:gameType, enableCard:Function}) {
+export function Card({selectedCards, card, game, enableCard}:{selectedCards:Array<card>, card:card, game:gameType, enableCard:Function}) {
     const cookies = useCookies()
     const [selected, setSelected] = useState(false)
     const searchParams = useSearchParams();
+    const [isSubmitted, setSubmitted] = useState(selectedCards.filter((subCard)=>card.id == subCard.id).length > 0)
     function discardCard(){
         console.log('Discarding card', card.id)
         const requestOptions = {
@@ -29,13 +30,14 @@ export function Card({selectedCards, card, game, enableCard}:{selectedCards:Arra
             })
             .catch((error) => console.error(error));
     }
+
     return(
         <div className={`whiteCardContainer ${selected?`whiteCardContainerActive`:null}`} onClick={()=>{setSelected(!selected)}}>
             {
                 card ?
                     (
                         <div>
-                            <div className="whiteCard">
+                            <div className={`whiteCard ${isSubmitted ? `cardIsSubmitted` : null}`}>
                                 {card.content}
                                 <div className="whiteCardPackName">
                                 {card.packName}
@@ -44,8 +46,11 @@ export function Card({selectedCards, card, game, enableCard}:{selectedCards:Arra
                             {selected ?
                                 (
                                     <div className="cardButtons">
-                                        <button className="whiteCardSubmitButton" onClick={()=>enableCard({id:card.id, pack:card.packID})}>
-                                            Play
+                                        <button className="whiteCardSubmitButton" onClick={()=>{
+                                            enableCard(card)
+                                            setSubmitted(!isSubmitted)
+                                        }}>
+                                            {isSubmitted ? 'Take back' : 'Submit'}
                                         </button>
                                         <button className="whiteCardDiscardButton" onClick={()=>discardCard()}>
                                             Discard
@@ -63,39 +68,52 @@ export function Card({selectedCards, card, game, enableCard}:{selectedCards:Arra
     )
 }
 
-export function BlackCard({card}:{card:card}) {
+export function BlackCard({cardInfos}:{cardInfos:{blackCard:card, playedCards:Array<card>}}) {
+    const [cardContent, setCardContent] = useState('')
+    useEffect(() => {
+        console.log('Re-rendering black card')
+        console.log(cardInfos)
+        if(!cardInfos.blackCard){
+            return
+        }
+        let content = cardInfos.blackCard.content
+        for(const playedCard of cardInfos.playedCards){
+            content = content.replace(/_+/, `<span class="insertedPhrase">${playedCard.content}</span>`)
+        }
+        setCardContent(content)
+    }, [cardInfos]);
+
     return (
         <div className="blackCard-Container">
-            <div className="blackCard">
-                {card.content}
+            <div className="blackCard" dangerouslySetInnerHTML={{__html: cardContent}}>
+
             </div>
             <button className="submitButton">
                 Confirm
             </button>
-
         </div>
     )
 }
 
 export default function CardSelector({cards, callback, game}:{cards:Array<card>, callback:Function, game:gameType}) {
-    const [submittedCards, setSubmittedCards] = useState<Array<clientCard>>([])
+    const [submittedCards, setSubmittedCards] = useState<Array<card>>([])
     useEffect(() => {
         console.log('Submitted cards:', submittedCards)
+        callback(submittedCards)
     }, [submittedCards]);
-    const enableCard = (card:clientCard) =>{
-        if(submittedCards.length < game.currentBlackCard.pickCount){
+    const toggleCard = (card:card) =>{
+        if(submittedCards.filter((submittedCard)=>submittedCard.id == card.id).length > 0){
+            setSubmittedCards(submittedCards.filter((submittedCard)=>submittedCard.id != card.id))
+        }else {
             setSubmittedCards([...submittedCards, card])
-        }else{
-            console.log('Too many cards selected')
         }
     }
     return (
         <div className="cardSelector">
             {
                 cards.map((card)=>{
-                    console.log(cards[card])
                     return(
-                        <Card selectedCards={submittedCards} card={card} key={card.id} game={game} enableCard={enableCard}/>
+                        <Card selectedCards={submittedCards} card={card} key={card.id} game={game} enableCard={toggleCard}/>
                     )
                 })
             }
