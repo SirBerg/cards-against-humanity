@@ -19,7 +19,8 @@ export type gamesType = {
         websockets:{[key:string]:WebSocket}
         requests:{[key:string]:Request}
         starting:boolean,
-        queue:Array<string>
+        queue:Array<string>,
+        status: "playing" | "judging" | "lobby"
     }
 }
 
@@ -31,7 +32,8 @@ export type gameType = {
     startedAt:string
     currentBlackCard:card
     clients:{[key:string]:clientType}
-    starting:boolean
+    starting:boolean,
+    status: "playing" | "judging" | "lobby"
 }
 export type card = {
     content:string,
@@ -44,7 +46,8 @@ export type card = {
 
 export type clientCard = {
     id:string,
-    packID:string
+    packID:string,
+    isRevealed:boolean
 }
 
 export type cardMemoryObject = {[key:string]: {

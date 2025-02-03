@@ -132,7 +132,8 @@ app.get('/v2/game/coordinator/:gameid/gamestate/:userid', (req, res)=>{
                     started: games[req.params.gameid].started,
                     startedAt: games[req.params.gameid].startedAt,
                     currentBlackCard: games[req.params.gameid].currentBlackCard,
-                    clients: games[req.params.gameid].clients
+                    clients: games[req.params.gameid].clients,
+                    status: games[req.params.gameid].status
                 }
             }
         )

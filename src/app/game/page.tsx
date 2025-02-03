@@ -9,6 +9,7 @@ import {uuidv7} from "@/utils/uuid";
 import CardSelector, {BlackCard} from "@/components/game/cards";
 import {gameType, card} from "@/lib/types";
 import './game.css'
+import Judging from "@/components/game/juding";
 export default function Game(){
     const [websocket, setWebsocket] = useState<WebSocket>()
     const searchParams = useSearchParams();
@@ -115,7 +116,7 @@ export default function Game(){
             console.log('Submitting')
             const myHeaders = new Headers();
             myHeaders.append("Content-Type", "application/json");
-            const raw = JSON.stringify({cards:blackCardInfos.playedCards.map((card)=>{return {id:card.id, packID:card.packID}})});
+            const raw = JSON.stringify({cards:blackCardInfos.playedCards.map((card)=>{return {id:card.id, packID:card.packID, isReveald: false}})});
             console.log(raw)
             const requestOptions = {
                 method: "POST",
@@ -125,8 +126,6 @@ export default function Game(){
             };
 
             fetch(`http://localhost:3001/v2/game/coordinator/${gameID}/submit/${cookies.get('userID')}`, requestOptions)
-                .then((response) => response.text())
-                .then((result) => console.log(result))
                 .catch((error) => console.error(error));
         }
     },[submitted])
@@ -136,8 +135,10 @@ export default function Game(){
     useEffect(() => {
         console.log('Black Card state changed: ', blackCardInfos)
     }, [blackCardInfos]);
-    //if the game isn't empty anymore, we want to show the game
-    if(game){
+
+
+    //if the game isn't empty anymore, we want to show the game;
+    if(game && game.status != 'judging'){
 
         //if it's the users turn, we want to show them the black card only and a message to wait for the other players
         if(game.clients[cookies.get('userID')].isTurn){
@@ -145,7 +146,7 @@ export default function Game(){
                 <div className="gameMain">
                     <BlackCard cardInfos={blackCardInfos} submit={()=>{setSubmitted(true)}}/>
                     <div>
-                        <h2>It&#39;s your turn! Sit tight and wait for the other to submit something</h2>
+                        <h2>It&#39;s your turn! Sit tight and wait for the others to submit something</h2>
                     </div>
                     <Toaster />
                 </div>
@@ -156,15 +157,27 @@ export default function Game(){
         return(
             <div className="gameMain">
                 <BlackCard cardInfos={blackCardInfos} submit={()=>{setSubmitted(true)}}/>
-                {userCards.length > 0 ? <CardSelector cards={userCards} game={game} callback={(playedCards:Array<card>)=>{
+                {userCards.length > 0 && !submitted ? <CardSelector cards={userCards} game={game} callback={(playedCards:Array<card>)=>{
                     const blackCardInfo = {blackCard:blackCardInfos.blackCard, playedCards:playedCards}
                     setBlackCardInfos(blackCardInfo)
-                }}/> : null}
+                }}/> : 'You are done for this round, wait for the others to finish!'}
                 <Toaster />
             </div>
         )
     }
 
+    //if the game is in the judging phase, show the juding component as well as the BlackCard component
+    else if(game && game.status == 'judging'){
+        return(
+            <div className="gameMain">
+                <BlackCard cardInfos={blackCardInfos} submit={()=>{setSubmitted(true)}}/>
+                <div>
+                    <Judging game={game} userID={cookies.get('userID') as string} wsCallback={(nextCardID:string, direction:"Forward" | "Backward")=>{return}} />
+                </div>
+                <Toaster />
+            </div>
+        )
+    }
     //if the game hasn't loaded yet, show a loading message
     else{
         return(

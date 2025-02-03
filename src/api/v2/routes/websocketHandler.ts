@@ -1,10 +1,12 @@
 import {Request} from 'express'
 import {Logger} from "@/lib/logger";
-import {WebSocket} from 'ws'
+import {RawData, WebSocket} from 'ws'
 import runPreflight from "@api/v2/routes/websocket/preflight";
 import {cardMemoryObject, gamesType} from "@/lib/types";
 import onMessage from "@api/v2/routes/websocket/message";
 import onClose from "@api/v2/routes/websocket/close";
+import {packManifest} from "@/lib/types";
+
 export default async function websocketHandler(ws:WebSocket, req:Request, games:gamesType, cards:cardMemoryObject, packManifest:packManifest, log:Logger){
     log.logRequest(req.url, 'WS')
     let failedPreflight = false
@@ -24,7 +26,7 @@ export default async function websocketHandler(ws:WebSocket, req:Request, games:
     const playerID = req.query.userid as string
     const userName = req.query.username as string
 
-    ws.on('message', (message)=>{
+    ws.on('message', (message:RawData)=>{
         log.debug(`Received message from client ${playerID}: ${message}`)
         onMessage(message, games, gameID, playerID, cards, packManifest, log)
     })

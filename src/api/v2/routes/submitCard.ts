@@ -1,10 +1,10 @@
 import {Request, Response} from 'express'
-import {cardMemoryObject, clientCard, gamesType} from "@/lib/types";
+import {cardMemoryObject, gamesType} from "@/lib/types";
 import {Logger} from "@/lib/logger";
 import {broadcastGameState} from "@api/lib";
 
 //Validate the basic request format of the submitCards endpoint (like if the gameID and userID are present)
-function validateSubmitCards(request:Request, games:gamesType, log:LOgger):boolean{
+function validateSubmitCards(request:Request, games:gamesType, log:Logger):boolean{
     if(!request.params.gameID || !request.params.userID){
         log.debug('Missing gameID or userID')
         return false
@@ -58,7 +58,26 @@ export default function submitCards(request:Request, response:Response, games:ga
 
     //Set the submitted cards for the player
     games[request.params.gameID].clients[request.params.userID as string].submittedCards = request.body.cards
+
     response.status(200).json({message: 'Cards submitted'})
+
+    //Check if all players have submitted cards
+    let allSubmitted = true
+    for(const client in games[request.params.gameID].clients){
+        if(!games[request.params.gameID].clients[client].submittedCards && games[request.params.gameID].clients[client].isConnected && !games[request.params.gameID].clients[client].isTurn){
+            allSubmitted = false
+            break
+        }
+    }
+
+    //If all players have submitted cards, set the game state to judging
+    if(allSubmitted){
+        log.debug('All players have submitted cards, starting judging phase')
+        //set the game state to judging
+        games[request.params.gameID].status = 'judging'
+    }
+
+    //Broadcast the game state
     broadcastGameState(request.params.gameID, games, log)
     return
 }

@@ -1,0 +1,13 @@
+.judgingCarousel{
+    max-width: 95vw;
+    margin: 0 auto;
+}
+.judgingContainer{
+    display: flex;
+    flex-direction: row;
+}
+.carouselItem{
+    align-content: center;
+    justify-content: center;
+    display: flex;
+}
