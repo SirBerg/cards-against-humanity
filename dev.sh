@@ -9,7 +9,6 @@ function startServer(){
 function main(){
   if [[ $(cat /etc/os-release | grep ^NAME | cut -d"=" -f2) == "NixOS" && $IS_NIX_SHELL != "true" ]]; then
     echo "Starting nix-shell..."
-    echo $IS_NIX_SHELL
     nix-shell --run $0 
   else
     startServer

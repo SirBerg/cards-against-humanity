@@ -1,3 +1,5 @@
+import {UndoIcon} from "lucide-react"
+
 export type clientType = {
     userID:string
     userName:string
@@ -33,4 +35,20 @@ export type gameType = {
     clients:{[key:string]:clientType}
     starting:boolean
 }
-export type card = {content:string, pack:string, id:string}
+export type card = {
+  content:string
+  pack:string
+  packID?:string
+  id:string
+  pickCount?:number
+  type?:'black'|'white'
+}
+
+export type memoryCards = {
+  [key:string]: {
+    black: {[key:string]:card}
+    white: {[key:string]:card}
+    blackCount:number
+    whiteCount:number
+  }
+}

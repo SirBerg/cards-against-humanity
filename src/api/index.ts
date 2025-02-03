@@ -1,7 +1,7 @@
 import express from 'express'
 import {Database} from 'bun:sqlite'
 import coordinator, {gameTable} from './v1/game/coordinator'
-import type {clientType, gamesType} from '@/lib/types'
+import type {card, memoryCards, clientType, gamesType} from '@/lib/types'
 import {uuidv7} from "@/utils/uuid";
 import cors from 'cors'
 import {Logger} from "@/lib/logger";
@@ -34,32 +34,15 @@ var expressWs = require('express-ws')(app)
 app.use(cors())
 app.use(express.json())
 //get all the manifest IDs
-const manifestIDs = db.query('SELECT id FROM manifest').all().map((row)=>row.id)
+const manifestIDs = db.query('SELECT id FROM manifest').all().map((row: any)=>row.id)
 
 //create the cards object so we can avoid querying the database for every card
 const cards = db.query('SELECT * FROM cards').all()
 log.debug(`Found ${cards.length} cards in the database, building RAM object`)
-const memoryCards:{[key:string]: {
-    black: {[key:string]:{
-            id:string,
-            type:string,
-            content:string,
-            pickCount:number,
-            packID:string
-        }
-    }
-    white: {[key:string]:{
-            id:string,
-            type:string,
-            content:string,
-            pickCount:number,
-            packID:string
-        }
-    }
-    blackCount:number
-    whiteCount:number
-}} = {}
-for(const card of cards){
+const memoryCards: memoryCards = {};
+
+(cards as card[]).forEach((card: card) => {
+  if(typeof card.packID !== 'undefined'){
     if(!memoryCards[card.packID]){
         memoryCards[card.packID] = {
             black: {},
@@ -76,7 +59,8 @@ for(const card of cards){
         memoryCards[card.packID].whiteCount++
         memoryCards[card.packID].white[card.id] = card
     }
-}
+  }
+})
 log.debug('Finished building RAM object')
 
 
@@ -174,7 +158,7 @@ app.post('/v2/game/coordinator', (req, res)=>{
 })
 
 
-app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
+expressWs.app.ws('/v2/game/coordinator/:gameid', async(ws:WebSocket, req:Request)=>{
     function getRandomBlackCard(gameID:string):{cardID:string, pack:string}{
         function rand(){
             //get a random pack we should draw from
