@@ -4,5 +4,8 @@ let
 in
     pkgs.mkShell rec {
         experimental-features = [ "nix-command" "flakes" ];
-        nativeBuildInputs = with pkgs.buildPackages; [ bun attic-client attic-server jq git ];
+        nativeBuildInputs = with pkgs.buildPackages; [ bun git ];
+        shellHook = ''
+          export IS_NIX_SHELL=true
+        '';
 }
