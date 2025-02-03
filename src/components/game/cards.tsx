@@ -68,7 +68,7 @@ export function Card({selectedCards, card, game, enableCard}:{selectedCards:Arra
     )
 }
 
-export function BlackCard({cardInfos}:{cardInfos:{blackCard:card, playedCards:Array<card>}}) {
+export function BlackCard({cardInfos, submit}:{cardInfos:{blackCard:card, playedCards:Array<card>}, submit:Function}) {
     const [cardContent, setCardContent] = useState('')
     useEffect(() => {
         console.log('Re-rendering black card')
@@ -86,9 +86,8 @@ export function BlackCard({cardInfos}:{cardInfos:{blackCard:card, playedCards:Ar
     return (
         <div className="blackCard-Container">
             <div className="blackCard" dangerouslySetInnerHTML={{__html: cardContent}}>
-
             </div>
-            <button className="submitButton">
+            <button className="submitButton" onClick={()=>submit()}>
                 Confirm
             </button>
         </div>

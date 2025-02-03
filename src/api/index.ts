@@ -141,6 +141,8 @@ app.get('/v2/game/coordinator/:gameid/gamestate/:userid', (req, res)=>{
 
 //submit cards to the game
 app.post('/v2/game/coordinator/:gameID/submit/:userID', async (req, res)=>{
+    log.logRequest(req.url, 'POST')
+    console.log(req.body)
     submitCards(req, res, games, memoryCards, log)
 })
 

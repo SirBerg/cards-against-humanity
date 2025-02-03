@@ -18,6 +18,7 @@ export default function Game(){
     const [user, setUser] = useState({id:'', name:''})
     const [userCards, setUserCards] = useState<Array<card>>([])
     const [playedCards, setPlayedCards] = useState<Array<card>>([])
+    const [submitted, setSubmitted] = useState(false)
     const [blackCardInfos, setBlackCardInfos] = useState<{blackCard:card, playedCards:Array<card>}>({blackCard:null, playedCards:[]})
     const [game, setGame] = useState<
         gameType | null
@@ -106,7 +107,29 @@ export default function Game(){
         })
 
     }
+    useEffect(()=>{
+        if(game){
+            console.log(game, game.clients[cookies.get('userID')].submittedCards.length, submitted)
+        }
+        if(submitted && game && game.clients[cookies.get('userID') as string].submittedCards.length == 0 && playedCards.length == 0){
+            console.log('Submitting')
+            const myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+            const raw = JSON.stringify({cards:blackCardInfos.playedCards.map((card)=>{return {id:card.id, packID:card.packID}})});
+            console.log(raw)
+            const requestOptions = {
+                method: "POST",
+                headers: myHeaders,
+                body: raw,
+                redirect: "follow"
+            };
 
+            fetch(`http://localhost:3001/v2/game/coordinator/${gameID}/submit/${cookies.get('userID')}`, requestOptions)
+                .then((response) => response.text())
+                .then((result) => console.log(result))
+                .catch((error) => console.error(error));
+        }
+    },[submitted])
     useEffect(() => {
         console.log('State changed: ', playedCards)
     }, [playedCards]);
@@ -120,7 +143,7 @@ export default function Game(){
         if(game.clients[cookies.get('userID')].isTurn){
             return(
                 <div className="gameMain">
-                    <BlackCard cardInfos={blackCardInfos}/>
+                    <BlackCard cardInfos={blackCardInfos} submit={()=>{setSubmitted(true)}}/>
                     <div>
                         <h2>It&#39;s your turn! Sit tight and wait for the other to submit something</h2>
                     </div>
@@ -132,7 +155,7 @@ export default function Game(){
         //this is the default screen shown to the user
         return(
             <div className="gameMain">
-                <BlackCard cardInfos={blackCardInfos}/>
+                <BlackCard cardInfos={blackCardInfos} submit={()=>{setSubmitted(true)}}/>
                 {userCards.length > 0 ? <CardSelector cards={userCards} game={game} callback={(playedCards:Array<card>)=>{
                     const blackCardInfo = {blackCard:blackCardInfos.blackCard, playedCards:playedCards}
                     setBlackCardInfos(blackCardInfo)
