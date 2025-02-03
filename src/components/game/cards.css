@@ -2,12 +2,20 @@
     background-color: white;
     border-radius: 10px;
     border: 1px solid gray;
-    padding: 10px;
+    padding: 20px;
     font-weight: bolder;
     min-height: 300px;
     width: 200px;
     color: black;
     font-size: 1.2rem;
+    position: relative;
+}
+.whiteCardPackName{
+  font-size: 10px;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  margin: 10px;
 }
 .whiteCardContainer{
     display: flex;
@@ -24,7 +32,6 @@
     margin-top: 20px;
     border-radius: 5px;
     cursor: pointer;
-    width: 150px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -36,7 +43,6 @@
     transition: 0.3s;
     color: white;
     border: 1px solid white;
-    background-color: purple;
     margin-left: 10px;
     margin-right: 10px;
 }
@@ -90,4 +96,28 @@
     border: 1px solid white;
     margin-left: 10px;
     margin-right: 10px;
+}
+
+.whiteCardDiscardButton{
+    background-color: red;
+    border: 1px solid white;
+    color: white;
+    padding: 10px;
+    margin-top: 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: auto;
+    margin-right: auto;
+}
+.cardIsSubmitted{
+    background-color: gray !important;
+}
+.cardButtons{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+.insertedPhrase{
+    color: black;
+    background-color: white;
+    padding: 2px;
 }

@@ -48,12 +48,12 @@ db.query(`
 for(const deck of cards){
     console.log('Inserting: ', deck.name)
     const cardID = uuidv7()
-    //insert the "manifest" of the deck, so what the deck is called, how many cards it has, etc
+    //insert the "manifest" of the deck, so what the deck is called, how many cards.ts it has, etc
     db.query(`
         INSERT INTO manifest (id, name, official, whiteCount, blackCount) VALUES (?, ?, ?, ?, ?)
     `).run(cardID, deck.name, deck.official, deck.white.length, deck.black.length)
 
-    //insert the cards
+    //insert the cards.ts
     const cardInsert = db.prepare(`INSERT INTO cards (id, type, content, pickCount, packID) VALUES (?, ?, ?, ?, ?)`)
     const cardTransaction = db.transaction((cards, cardType) =>{
         for(const card of cards){
