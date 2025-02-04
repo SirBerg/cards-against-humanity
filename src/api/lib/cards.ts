@@ -74,6 +74,7 @@ export function drawBlackCard(games:gamesType, gameID:string, memoryCards:cardMe
 }
 
 
+
 //This function just makes sure that we don't have to repeat the same code twice
 export function getRandomBlackCard(games:gamesType, gameID:string, memoryCards:cardMemoryObject):card{
     let card = drawBlackCard(games, gameID, memoryCards)

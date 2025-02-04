@@ -139,7 +139,7 @@ export default function Game(){
 
     //if the game isn't empty anymore, we want to show the game;
     if(game && game.status != 'judging'){
-
+        console.log(cookies.get('userID'))
         //if it's the users turn, we want to show them the black card only and a message to wait for the other players
         if(game.clients[cookies.get('userID')].isTurn){
             return(
@@ -172,7 +172,7 @@ export default function Game(){
             <div className="gameMain">
                 <BlackCard cardInfos={blackCardInfos} submit={()=>{setSubmitted(true)}}/>
                 <div>
-                    <Judging game={game} userID={cookies.get('userID') as string} wsCallback={(nextCardID:string, direction:"Forward" | "Backward")=>{return}} />
+                    <Judging game={game} userID={cookies.get('userID') as string} gameID={gameID} wsCallback={(wsPayload:object)=>{return}} />
                 </div>
                 <Toaster />
             </div>

@@ -9,7 +9,8 @@ const allowedCommands:string[] = [
     "updateUser",
     "banUser",
     "updateUser",
-    "startGame"
+    "startGame",
+    "updateFocusedPlayer"
 ]
 
 export default function onMessage(eventInput:RawData, games:gamesType, gameID:string, userID:string, memoryCards:cardMemoryObject, packManifests:packManifest, log:Logger){
@@ -103,5 +104,10 @@ export default function onMessage(eventInput:RawData, games:gamesType, gameID:st
     //Handle Game Specific Tasks such as revealing Cards
     //Cards have to be submitted by calling the /v2/game/coordinator/:gameID/submit/:userID (POST) Endpoint
     //Winner has to be selected by calling the /v2/game/coordinator/:gameID/winner/:userID (POST) Endpoint
-
+    //This updates the currently focused player in the judging phase of the game. It can only be done by the player who is currently judging
+    if(event.type == 'updateFocusedPlayer' && games[gameID].clients[userID].isTurn && event.userID){
+        log.debug('Updating focused player')
+        games[gameID].judging.focusedPlayer = event.userID
+        broadcastGameState(gameID, games, log)
+    }
 }

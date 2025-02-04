@@ -20,7 +20,10 @@ export type gamesType = {
         requests:{[key:string]:Request}
         starting:boolean,
         queue:Array<string>,
-        status: "playing" | "judging" | "lobby"
+        status: "playing" | "judging" | "lobby",
+        judging: {
+            "focusedPlayer":string,
+        }
     }
 }
 
@@ -33,7 +36,10 @@ export type gameType = {
     currentBlackCard:card
     clients:{[key:string]:clientType}
     starting:boolean,
-    status: "playing" | "judging" | "lobby"
+    status: "playing" | "judging" | "lobby",
+    judging: {
+        "focusedPlayer":string,
+    }
 }
 export type card = {
     content:string,

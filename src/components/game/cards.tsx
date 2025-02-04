@@ -94,6 +94,37 @@ export function BlackCard({cardInfos, submit}:{cardInfos:{blackCard:card, played
     )
 }
 
+export function HiddenCard(){
+    return(
+        <div className = "whiteCard">
+            Cards against Humanity
+        </div>
+    )
+}
+export function WhiteCardWithoutUtils({card}:{card:clientCard}){
+    const [fullCard, setFullCard] = useState<card|null>(null)
+
+    useEffect(()=>{
+        async function wrapper(){
+            const reqOptions = {
+                method: "GET"
+            }
+            const cardData = await fetch(`http://localhost:3001/v2/card/${card.packID}/${card.id}`, reqOptions)
+                .then((response) => response.text())
+                .then((result) => {
+                    return JSON.parse(result)
+                })
+                .catch((error) => console.error(error));
+            setFullCard(cardData)
+        }
+        wrapper()
+    }, [])
+    return(
+        <div className = "whiteCard">
+            {fullCard ? fullCard.content : "Loading..."}
+        </div>
+    )
+}
 export default function CardSelector({cards, callback, game}:{cards:Array<card>, callback:Function, game:gameType}) {
     const [submittedCards, setSubmittedCards] = useState<Array<card>>([])
     useEffect(() => {
