@@ -79,3 +79,9 @@ export type cardMemoryObject = {[key:string]: {
 }}
 
 export type packManifest = Array<string>
+
+//This extension provides the necessary information to dynamically show the user the current black card
+//with selected but not played cards
+export interface clientCardExtension extends clientCard{
+    played:boolean
+}

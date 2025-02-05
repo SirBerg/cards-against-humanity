@@ -1,5 +1,5 @@
 import chalk, {ChalkInstance} from "chalk";
-const dotenv = require("dotenv");
+//const dotenv = require("dotenv");
 type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
 type JSONLog = {
     level: LogLevel;
@@ -9,6 +9,7 @@ type JSONLog = {
 export class Logger{
     private static logLevel: number = 1;
     private static jsonLogging: boolean = true;
+    private static processIsBrowser: boolean = false;
     private static logLevelMap: any = {
         "DEBUG": 1,
         "INFO": 2,
@@ -22,6 +23,13 @@ export class Logger{
         "WARN": chalk.bgYellow,
         "ERROR": chalk.bgRed
     };
+
+    private static browserLogLevelColorMap: any = {
+        "DEBUG": "b2a09c",
+        "INFO": "3da11d",
+        "WARN": "ffff00",
+        "ERROR": "ff0000"
+    }
     private static verbColorMap: any = {
         "GET": chalk.bgGreenBright,
         "POST": chalk.bgYellowBright,
@@ -41,6 +49,9 @@ export class Logger{
     public setJsonLogging(jsonLogging: boolean){
         Logger.jsonLogging = jsonLogging;
     }
+    public setProcessIsBrowser(processIsBrowser: boolean){
+        Logger.processIsBrowser = processIsBrowser;
+    }
     log(level:LogLevel, message: string){
         if(Logger.logLevelMap[level] < Logger.logLevel){
             return;
@@ -51,9 +62,17 @@ export class Logger{
                 message,
                 timestamp: new Date().toISOString()
             } as JSONLog));
-        }else{
+            return
+        }
+
+        //Handle browser logging
+        if(Logger.processIsBrowser){
+            console.log(`%c${new Date().toISOString()} %c${level} %c${message}`, `color: grey`, `background-color: #${Logger.browserLogLevelColorMap[level]}`, `color: white`);
+        }
+        else{
             console.log(chalk.grey(`${new Date().toISOString()}`), Logger.logLevelColorMap[level](`${level}`), message);
         }
+
     }
 
     public debug(message: string){
@@ -77,6 +96,6 @@ export class Logger{
         }
     }
     constructor() {
-        dotenv.config()
+        //dotenv.config()
     }
 }
