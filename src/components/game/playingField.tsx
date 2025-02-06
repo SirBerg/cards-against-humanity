@@ -36,13 +36,14 @@ export default function PlayingField({game, user, gameID}:{game:gameType, user:{
 
     return(
         <div>
-            <BlackCardContainer card={game.currentBlackCard}
-                                danglingCards={danglingCards}
-                                submitted={game.clients[user.id].submittedCards.length > 0}
-                                log={log}
-                                game={game}
-                                gameID={gameID}
-                                user={user}
+            <BlackCardContainer
+                card={game.currentBlackCard}
+                danglingCards={danglingCards}
+                submitted={game.clients[user.id].submittedCards.length > 0}
+                log={log}
+                game={game}
+                gameID={gameID}
+                user={user}
             />
 
             {
@@ -53,15 +54,18 @@ export default function PlayingField({game, user, gameID}:{game:gameType, user:{
                     user={user}
                     gameID={gameID}
                     log={log}
+                    updateDanglingCards={updateDanglingCards}
                 /> : null
             }
 
 
-            <WhiteCardContainer game={game}
-                                user={user}
-                                gameID={gameID}
-                                updateDanglingCards={updateDanglingCards}
-                                log={log}/>
+            <WhiteCardContainer
+                game={game}
+                user={user}
+                gameID={gameID}
+                updateDanglingCards={updateDanglingCards}
+                log={log}
+            />
         </div>
     )
 }

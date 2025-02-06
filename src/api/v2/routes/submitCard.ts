@@ -75,6 +75,8 @@ export default function submitCards(request:Request, response:Response, games:ga
         log.debug('All players have submitted cards, starting judging phase')
         //set the game state to judging
         games[request.params.gameID].status = 'judging'
+        //Set the focused player to the first player (after the player who is the judge)
+        games[request.params.gameID].judging.focusedPlayer = games[request.params.gameID].queue[1]
     }
 
     //Broadcast the game state

@@ -16,6 +16,7 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
     //This hook updates the black card when the danglingCards updates
     //It replaces all the blanks in the black card with the white card's content
     useEffect(() => {
+        log.info('Re-Rendering Black Card')
         //We need to wrap the effect in a function to be able to use async/await for the fetches
         async function effectWrapper(){
             const newBlackCard = {...card}
@@ -82,7 +83,9 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                cards: danglingCards
+                cards: danglingCards.map((card)=>{
+                    return {id: card.id, packID: card.packID}
+                })
             })
         })
         .then((result)=>result.text())
@@ -97,7 +100,7 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
             <BlackCard card={blackCard} />
             {
                 //if the user has not yet submitted cards to the game we can show them the submit button, otherwise we don't
-                game.clients[user.id].submittedCards.length == 0 && !game.clients[user.id].isTurn ?
+                game.clients[user.id].submittedCards.length == 0 && !game.clients[user.id].isTurn && game.status != 'judging' ?
                     <button className="blackCardSubmitButton" onClick={() => submit()}>Submit this</button>
                     :
                     null
