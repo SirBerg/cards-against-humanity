@@ -1,5 +1,5 @@
 
-import {gameType, card, clientCard} from "@/lib/types";
+import {gameType, card} from "@/lib/types";
 import {Logger} from "@/lib/logger";
 import {WhiteCard} from "@/components/game/utilComponents/cards";
 import {useEffect, useState} from "react";
@@ -18,7 +18,7 @@ For the card submission, go to the BlackCardContainer component
 * gameID: string
 * updateDanglingCards: (cards:card[])=>void
 * */
-export default function WhiteCardContainer({game, user, gameID, updateDanglingCards, log}:{game:gameType, user:{id:string, name:string}, gameID:string, updateDanglingCards:(cards:card[])=>void, log:Logger}){
+export default function WhiteCardContainer({game, user, updateDanglingCards, log}:{game:gameType, user:{id:string, name:string}, gameID:string, updateDanglingCards:(cards:card[])=>void, log:Logger}){
     const [cards, setCards] = useState<card[]>([])
     const [danglingCards, setDanglingCards] = useState<card[]>([])
     //The hook for the toast
@@ -39,6 +39,7 @@ export default function WhiteCardContainer({game, user, gameID, updateDanglingCa
                 };
 
                 //Actually fetch the cards
+                //@ts-ignore
                 await fetch(`http://localhost:3001/v2/card/${card.packID}/${card.id}`, requestOptions)
                     .then((response) => response.text())
                     .then((result) => {
@@ -54,7 +55,7 @@ export default function WhiteCardContainer({game, user, gameID, updateDanglingCa
             log.info('Setting White Cards')
             setCards(whiteCards)
         })
-    }, []);
+    }, [game.clients, log, user.id]);
 
     //This function handles the click event on a white card
     //It updates the dangling cards and checks if the card was already clicked once before

@@ -40,22 +40,14 @@ export default async function runPreflight(req:Request, ws:WebSocket, games:game
         }
         log.debug(`Websocket connection received: ${req.query.userid}, with userid: ${req.query.userName}, to game: ${req.params.gameID}`)
         //Check if the player is banned
-        if(games[req.params.gameID as string].bannedIDs.includes(req.query.userid)){
+        if(games[req.params.gameID as string].bannedIDs.includes(req.query.userid as string)){
             log.debug(`Player is banned ${req.query.userid}`)
             reject('Player is banned')
             return
         }
-        //Check if the player is already connected, if they are, close that connection and send a message
-        if(games[req.params.gameID as string].clients[req.query.userid as string] && games[req.params.gameID as string].clients[req.query.userid as string].isConnected){
-            log.debug(`Player is already connected ${req.query.userid}`)
-            //send a message to the player
-            games[req.params.gameID as string].websockets[req.query.userid as string].send(JSON.stringify({'type':'newConnection'}))
-
-            //close the connection
-            games[req.params.gameID as string].websockets[req.query.userid as string].close(1008, JSON.stringify({'error': 'New connection opened'}))
-        }
 
         //Check if the player exists (if they are not in the game, then add them)
+        console.log(req.params, games)
         if(!games[req.params.gameID as string].clients[req.query.userid as string]){
             games[req.params.gameID as string].clients[req.query.userid as string] = {
                 userID: req.query.userid as string,
@@ -66,6 +58,16 @@ export default async function runPreflight(req:Request, ws:WebSocket, games:game
                 isTurn: false,
                 submittedCards: []
             }
+        }
+        
+        //Check if the player is already connected, if they are, close that connection and send a message
+        if(games[req.params.gameID as string].clients[req.query.userid as string] && games[req.params.gameID as string].clients[req.query.userid as string].isConnected){
+            log.debug(`Player is already connected ${req.query.userid}`)
+            //send a message to the player
+            games[req.params.gameID as string].websockets[req.query.userid as string].send(JSON.stringify({'type':'newConnection'}))
+
+            //close the connection
+            games[req.params.gameID as string].websockets[req.query.userid as string].close(1008, JSON.stringify({'error': 'New connection opened'}))
         }
 
         //set the websocket for the player

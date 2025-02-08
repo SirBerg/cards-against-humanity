@@ -1,6 +1,6 @@
 'use client'
 import './gameHandler.css'
-import {useEffect, useState, useRef} from "react";
+import {useEffect, useState} from "react";
 import { uuidv7 } from "@/utils/uuid";
 import { useCookies } from 'next-client-cookies';
 import {
@@ -10,9 +10,10 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
-import {toast, useToast} from "@/hooks/use-toast";
+import {useToast} from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster"
-import {gameType} from "@/lib/types";
+import {gameType, clientType} from "@/lib/types";
+import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
 
 export default function GameHandlerHome({callback}:{callback:Function}) {
     const cookies = useCookies()
@@ -29,7 +30,6 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
         if(!user || user == 'undefined' || cookies.get('userName') == ''){
             console.log("No user ID found, generating a new one")
             const id = uuidv7()
-            const { uniqueNamesGenerator, adjectives, colors, animals } = require('unique-names-generator');
 
             const randomName = uniqueNamesGenerator({ dictionaries: [adjectives, colors, animals] }); // big_red_donkey
             user = id
@@ -37,7 +37,7 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
             cookies.set('userName', randomName)
         }
         console.log('User ID: ', user)
-        setUser({id:user, name:cookies.get('userName')})
+        setUser({id:user, name:cookies.get('userName') as string})
         console.log('User', user)
         console.log('Cookies', cookies.get('userName'))
         //request a new game
@@ -50,6 +50,7 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
             headers: myHeaders,
             redirect: "follow"
         };
+        //@ts-ignore
         fetch("http://localhost:3001/v2/game/coordinator", requestOptions)
             .then((response) => response.text())
             .then((result) => {
@@ -57,7 +58,7 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
                 setGameID(JSON.parse(result).gameID)
             })
             .catch((error) => console.error(error));
-    },[])
+    },[cookies])
     useEffect(() => {
         console.log('USING GAMESTATE:', game)
     }, [game]);
@@ -67,7 +68,9 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
             const ws = new WebSocket(`ws://localhost:3001/v2/game/coordinator/${gameID}?userid=${user.id}&username=${user.name}`);
             ws.onopen = () => {
                 console.log("Connected to the websocket server");
+                setWebSocket(ws);
             };
+            //@ts-ignore
             ws.onmessage = (event) => {
                 const message = JSON.parse(event.data);
                 //a message is always a complete game state so we don't have to handle it here but rather on the server
@@ -79,20 +82,19 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
                     window.location.href = `/game?gameID=${gameID}`
                 }
             };
-            setWebSocket(ws);
         }
 
         if(gameID){
             //update the gameID in the parent component
             callback(gameID)
         }
-    }, [gameID]);
+    }, [gameID, callback, user.id, user.name, webSocket]);
 
     //update the user
     useEffect(() => {
         cookies.set('userName', user.name)
         webSocket?.send(JSON.stringify({type: 'updateUser', userID: user.id, userName: user.name}));
-    }, [user]);
+    }, [user, webSocket, cookies]);
 
     function banUser(userID:string){
         //ensure the user is not banning themselves
@@ -108,8 +110,8 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
             toast({description: 'Game not found', title: 'Error:'})
         }
         let connectedUsers = 0
-        for(const user of Object.keys(game.clients)){
-            if(game.clients[user].isConnected){
+        for(const user of Object.keys(game?.clients as { [key: string]: clientType; })){
+            if(game?.clients[user].isConnected){
                 connectedUsers++
             }
         }
@@ -162,7 +164,7 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
                                             banUser(userobj.userID)
                                         }}
                                         style={{
-                                            backgroundColor: userobj.userID === user.id ? 'red' : 'blue'
+                                            backgroundColor: 'blue'
                                         }}
                                     >
                                         <p>{userobj.userName[0].toUpperCase()}</p>

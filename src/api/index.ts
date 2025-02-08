@@ -1,7 +1,7 @@
 import express from 'express'
 import {Database} from 'bun:sqlite'
-import type {clientType, gamesType, clientCard, card, cardMemoryObject} from '@/lib/types'
-import {broadcastGameState, webserverInit, drawWhiteCard} from '@/api/lib'
+import type {gamesType} from '@/lib/types'
+import {broadcastGameState, webserverInit} from '@/api/lib'
 import {WebSocket} from "ws";
 import {Request} from "express";
 import cors from 'cors'
@@ -15,7 +15,6 @@ const log = new Logger()
 log.setJsonLogging(false)
 log.setLogLevel('DEBUG')
 const app = express()
-const db = new Database('data/main.sqlite3')
 const gameDB = new Database(':memory:')
 
 //create the games table
@@ -36,7 +35,7 @@ gameDB.query(`
 `).all()
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-var expressWs = require('express-ws')(app)
+const expressWs = require('express-ws')(app)
 app.use(cors())
 app.use(express.json())
 //initialize the webserver

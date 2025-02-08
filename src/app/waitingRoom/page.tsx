@@ -3,10 +3,10 @@ import './waitingRoom.css'
 import {useEffect, useState} from "react";
 import { useSearchParams } from "next/navigation";
 import {uuidv7} from "@/utils/uuid";
-import {adjectives, animals, colors, uniqueNamesGenerator} from "unique-names-generator";
 import {useCookies} from "next-client-cookies";
 import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/hooks/use-toast"
+import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
 
 
 export default function Handler(){
@@ -27,7 +27,6 @@ export default function Handler(){
         if(!user || user == 'undefined' || cookies.get('userName') == ''){
             console.log("No user ID found, generating a new one")
             const id = uuidv7()
-            const { uniqueNamesGenerator, adjectives, colors, animals } = require('unique-names-generator');
 
             const randomName = uniqueNamesGenerator({ dictionaries: [adjectives, colors, animals] }); // big_red_donkey
             user = id
@@ -44,7 +43,7 @@ export default function Handler(){
             if(!event.data || !JSON.parse(event.data)){
                 return
             }
-            let message = JSON.parse(event.data)
+            const message = JSON.parse(event.data)
             if(message.type == 'banUser'){
                 window.alert('You have been banned from this game, redirecting to homepage')
                 window.location.href = '/'
@@ -65,12 +64,12 @@ export default function Handler(){
             toast({description: 'Connection to the websocket server closed', title: 'Error:'})
         }
         setWebSocket(ws)
-        setUser({id:user, name:cookies.get('userName')})
+        setUser({id:user, name:cookies.get('userName') as string})
 
-    }, []);
+    }, [cookies, searchParams, toast]);
     useEffect(()=>{
         cookies.set('userName', user.name)
-    }, [user])
+    }, [user, cookies])
     return(
         <div className="waitingRoomMain">
             <div className="waitingRoomInner">

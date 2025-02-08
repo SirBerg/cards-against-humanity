@@ -1,4 +1,5 @@
-import chalk, {ChalkInstance} from "chalk";
+import chalk from "chalk";
+
 //const dotenv = require("dotenv");
 type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
 type JSONLog = {

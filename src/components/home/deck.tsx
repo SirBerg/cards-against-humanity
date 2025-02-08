@@ -1,6 +1,5 @@
 'use client'
 import {useState, useEffect} from "react";
-import { CheckCheck } from 'lucide-react';
 import './deck-layout.css'
 import GameHandlerHome from "@/components/home/gameHandlerHome";
 import {useCookies} from "next-client-cookies";
@@ -14,16 +13,16 @@ export function DeckContainer({manifest}: {manifest: Array<any>}) {
     const [gameID, setGameID] = useState<string>('')
     const cookies = useCookies()
     useEffect(()=>{
-        let initialSelectedDecks = []
+        const initialSelectedDecks = []
         for(const decks of manifest) {
             if(decks.official == "1") {
                 initialSelectedDecks.push(decks.id)
             }
         }
         setSelectedDecks(initialSelectedDecks)
-    }, [])
+    }, [manifest])
     useEffect(() => {
-        let newSelectedDecks = []
+        const newSelectedDecks = []
         if(officialIsSelected) {
             for(const decks of manifest) {
                 if(decks.official == "1") {
@@ -40,7 +39,7 @@ export function DeckContainer({manifest}: {manifest: Array<any>}) {
         }
         setShowOfficial(false)
         setSelectedDecks(newSelectedDecks)
-    }, [officialIsSelected, customIsSelected]);
+    }, [officialIsSelected, customIsSelected, manifest]);
 
     //this handles the sending of updates to the selected packs to the server
     useEffect(() => {
@@ -60,11 +59,12 @@ export function DeckContainer({manifest}: {manifest: Array<any>}) {
             body: raw,
             redirect: "follow"
         };
+        //@ts-ignore
         fetch(`http://localhost:3001/v2/game/coordinator/${gameID}/packs`, requestOptions)
             .then((response) => response.text())
             .then((result) => console.log(result))
             .catch((error) => console.error(error));
-    }, [selectedDecks, gameID]);
+    }, [selectedDecks, gameID, cookies]);
     useEffect(() => {
         console.log('GAME ID IN DECK COMPONENT', gameID)
     }, [gameID])

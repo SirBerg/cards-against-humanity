@@ -1,6 +1,5 @@
 'use server'
 import DeckPicker from '../components/home/deckPicker'
-import GameHandlerHome from "@/components/home/gameHandlerHome";
 export default async function Home() {
     return (
         <div className="mainHome">

@@ -3,7 +3,7 @@
 import {card, gameType} from "@/lib/types";
 import {Logger} from "@/lib/logger";
 import {useEffect, useState} from "react";
-import {AnimatePresence, motion} from "motion/react";
+import {motion} from "motion/react";
 import {WhiteCard} from "@/components/game/utilComponents/cards";
 
 //This component is responsible to handle the judging phase of the game
@@ -14,7 +14,7 @@ import {WhiteCard} from "@/components/game/utilComponents/cards";
 //log: Logger
 export default function Judging({game, user, gameID, log, updateDanglingCards}:{game:gameType, user:{id:string, name:string}, gameID:string, log:Logger, updateDanglingCards:(cards:card[])=>void}){
     const [focusedUser, setFocusedUser] = useState<string>(game.judging.focusedPlayer)
-    const [cards, setCards] = useState<{[key:string]:card[]}>(null)
+    const [cards, setCards] = useState<{[key:string]:card[]}|null>(null)
 
     useEffect(() => {
         log.debug('Judging Mounted')
@@ -28,32 +28,33 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
                         redirect: "follow"
                     };
                     //Actually fetch the cards
+                    //@ts-ignore
                     await fetch(`http://localhost:3001/v2/card/${submittedCard.packID}/${submittedCard.id}`, requestOptions)
                         .then((response) => response.text())
                         .then((result) => {
                             const card:card = JSON.parse(result)
                             log.debug(`Fetched card: ${card.id}`)
-                            let newCards = {...cards}
+                            const newCards = {...cards}
                             if(newCards[userID]){
                                 newCards[userID].push(card)
                             }
                             else{
                                 newCards[userID] = [card]
                             }
-                            setCards((prev)=>newCards)
+                            setCards(()=>newCards)
                         })
                         .catch((error) => log.error(`Error while fetching card: ${error}`));
                 }
             }
         }
         wrapper()
-    }, [cards]);
+    }, [cards, game.clients, log]);
 
     //Handle updates to the game state
     useEffect(() => {
         setFocusedUser(game.judging.focusedPlayer)
         log.debug('Game State Changed in Judging Component')
-    }, [game]);
+    }, [game, log]);
     useEffect(() => {
         log.info('Cards have been updated in judging component')
         if(cards){
@@ -61,7 +62,7 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
             console.log(Object.keys(cards))
         }
 
-    }, [cards]);
+    }, [cards, log]);
     //Once the focusedPlayer updates, we need to update the dangling cards in the parent component to show the correct cards to the user
     useEffect(() => {
         log.debug('Focused player changed')
@@ -72,7 +73,7 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
         else{
             log.warn(`No cards found for user ${focusedUser}`)
         }
-    }, [focusedUser, game, cards]);
+    }, [focusedUser, game, cards, log, updateDanglingCards]);
 
     //Reveals a card in the API
     async function reveal(clientID:string, cardID:string){
@@ -80,6 +81,7 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
             method: "PATCH",
             redirect: "follow"
         }
+        //@ts-ignore
         await fetch(`http://localhost:3001/v2/game/coordinator/${gameID}/reveal/${clientID}/${cardID}`, requestOptions)
             .then((response) => response.text())
             .then((result) => {

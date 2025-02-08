@@ -1,8 +1,7 @@
-import {card, clientCardExtension, gameType} from "@/lib/types";
+import {card, gameType} from "@/lib/types";
 import {Logger} from "@/lib/logger";
 import WhiteCardContainer from "@/components/game/utilComponents/playingFieldWhiteCardContainer";
-import {BlackCard} from "@/components/game/utilComponents/cards";
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import BlackCardContainer from "@/components/game/utilComponents/blackCardContainer";
 import Judging from "@/components/game/utilComponents/judging";
 
@@ -18,7 +17,7 @@ export default function PlayingField({game, user, gameID}:{game:gameType, user:{
     //State to store the dangling cards (so cards which have been clicked but not yet submitted by the user)
     const [danglingCards, setDanglingCards] = useState<card[]>([])
 
-    const log = new Logger()
+    const log = useMemo(() => new Logger(), [])
     log.setJsonLogging(false)
     log.setLogLevel('DEBUG')
     log.setProcessIsBrowser(true)
@@ -32,7 +31,7 @@ export default function PlayingField({game, user, gameID}:{game:gameType, user:{
 
     useEffect(() => {
         log.warn('Game status changed in playing field!')
-    }, [game]);
+    }, [game, log]);
 
     return(
         <div>

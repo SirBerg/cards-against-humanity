@@ -1,4 +1,4 @@
-import {card, cardMemoryObject, clientCard, gamesType, packManifest} from "@/lib/types";
+import {card, cardMemoryObject, clientCard, gamesType} from "@/lib/types";
 
 export function drawWhiteCard(games:gamesType, gameID:string, memoryCards:cardMemoryObject):clientCard{
     //get a random pack we should draw from

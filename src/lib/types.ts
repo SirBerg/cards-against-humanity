@@ -1,4 +1,5 @@
-import {UndoIcon} from "lucide-react"
+import type { WebSocket } from "ws"
+import type { Request } from "express"
 
 export type clientType = {
     userID:string
@@ -13,7 +14,7 @@ export type gamesType = {
     [key:string]:{
         ownerID:string
         allowedPacks:string[]
-        bannedIDs:[]
+        bannedIDs:string[]
         started:boolean
         startedAt:string | null
         currentBlackCard:card

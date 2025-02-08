@@ -24,7 +24,6 @@ export default async function websocketHandler(ws:WebSocket, req:Request, games:
     //if the preflight checks passed, we can then add the event listeners and set some variables
     const gameID = req.params.gameID as string
     const playerID = req.query.userid as string
-    const userName = req.query.username as string
 
     ws.on('message', (message:RawData)=>{
         log.debug(`Received message from client ${playerID}: ${message}`)

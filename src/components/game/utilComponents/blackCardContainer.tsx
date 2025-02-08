@@ -32,6 +32,7 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
                     };
 
                     //Actually fetch the cards
+                    //@ts-ignore
                     await fetch(`http://localhost:3001/v2/card/${submittedCard.packID}/${submittedCard.id}`, requestOptions)
                         .then((response) => response.text())
                         .then((result) => {
@@ -62,7 +63,7 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
         }
         effectWrapper()
 
-    }, [danglingCards, submitted]);
+    }, [danglingCards, submitted, card, game.clients, game.status, log, user.id]);
 
     //This function is called when the user clicks the submit button
     //It just sends the cards to the server

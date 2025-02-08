@@ -1,6 +1,6 @@
 'use client'
 //This the game Page. It does not do anything else but keep the states of the game. Everything else is delegated to components
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {useCookies} from "next-client-cookies";
 import {uuidv7} from "@/utils/uuid";
 import {adjectives, animals, colors, uniqueNamesGenerator} from "unique-names-generator";
@@ -8,9 +8,10 @@ import {gameType} from "@/lib/types";
 import {useSearchParams} from 'next/navigation'
 import {Logger} from "@/lib/logger";
 import PlayingField from "@/components/game/playingField";
+import type MessageEvent from "ws";
 export default function Page(){
     const cookies = useCookies()
-    const log = new Logger()
+    const log = useMemo(() => new Logger(), [])
     log.setJsonLogging(false)
     log.setLogLevel('DEBUG')
     log.setProcessIsBrowser(true)
@@ -21,7 +22,7 @@ export default function Page(){
     //State to store the game ID
     const [gameID, setGameID] = useState('')
     //State to store the websocket connection
-    const [ws, setWs] = useState<WebSocket>()
+    const [, setWs] = useState<WebSocket>()
     //State to store the game information
     const [game, setGame] = useState<gameType | null>(null)
 
@@ -53,24 +54,26 @@ export default function Page(){
         }
         log.info(`Setting Game ID to ${gameID}`)
         setGameID(gameID)
-    }, [])
+    }, [cookies, log, searchParams])
 
     //This hook is called when the component has received a valid gameID and connects to the server
     useEffect(() => {
         //open a websocket connection to the server and store the connection in the state
         const websocket = new WebSocket(`ws://localhost:3001/v2/game/coordinator/${gameID}?userid=${user.id}&username=${user.name}`)
         setWs(websocket)
-        websocket.onerror = (e) => {
+        websocket.onerror = () => {
             log.error('Error while connecting to the websocket server')
         }
         websocket.onopen = () => {
             log.info('Connected to the websocket server')
         }
-        websocket.onmessage = (event:Event) =>{
+        //@ts-ignore
+        websocket.onmessage = (e:typeof Event) =>{
             log.debug('Received Websocket message from the server')
-            let data
+            let data: any
             try{
-                data = JSON.parse(event.data.toString())
+                //@ts-ignore
+                data = JSON.parse(e.data.toString())
                 if(!data){
                     return
                 }
@@ -85,11 +88,11 @@ export default function Page(){
                 setGame(()=>data.game)
             }
         }
-    }, [gameID]);
+    }, [gameID, log, user.id, user.name]);
     useEffect(() => {
         log.debug('Game State Updated:')
         console.log(game)
-    }, [game]);
+    }, [game, log]);
     return(
         <div>
             {
