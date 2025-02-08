@@ -12,7 +12,7 @@ export function drawWhiteCard(games:gamesType, gameID:string, memoryCards:cardMe
 
     //make sure there are cards in this pack, else return immediately
     if (cardsPerPack.length == 0) {
-        return {id: 'undefined', packID: 'undefined'}
+        return {id: 'undefined', packID: 'undefined', isRevealed: false}
     }
 
     //get a random card from that pack
@@ -21,11 +21,12 @@ export function drawWhiteCard(games:gamesType, gameID:string, memoryCards:cardMe
         cardIndex = cardsPerPack.length - 1
     }
     if (!cardsPerPack[cardIndex]) {
-        return {id: 'undefined', packID: 'undefined'}
+        return {id: 'undefined', packID: 'undefined', isRevealed: false}
     }
     return {
         id: cardsPerPack[cardIndex],
-        packID: pack
+        packID: pack,
+        isRevealed: false
     }
 }
 //This function just makes sure that we don't have to repeat the same code twice
@@ -71,6 +72,7 @@ export function drawBlackCard(games:gamesType, gameID:string, memoryCards:cardMe
         type: 'black'
     }
 }
+
 
 
 //This function just makes sure that we don't have to repeat the same code twice

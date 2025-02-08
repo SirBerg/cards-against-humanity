@@ -7,6 +7,7 @@ import {Request} from "express";
 import cors from 'cors'
 import {Logger} from "@/lib/logger";
 import replaceCard from "@/api/v2/routes/replaceCard";
+import revealCard from "@api/v2/routes/revealCard";
 import createGame from "@api/v2/routes/createGame";
 import websocketHandler from "@api/v2/routes/websocketHandler";
 import submitCards from "@api/v2/routes/submitCard";
@@ -132,7 +133,9 @@ app.get('/v2/game/coordinator/:gameid/gamestate/:userid', (req, res)=>{
                     started: games[req.params.gameid].started,
                     startedAt: games[req.params.gameid].startedAt,
                     currentBlackCard: games[req.params.gameid].currentBlackCard,
-                    clients: games[req.params.gameid].clients
+                    clients: games[req.params.gameid].clients,
+                    status: games[req.params.gameid].status,
+                    judging: games[req.params.gameid].judging
                 }
             }
         )
@@ -152,6 +155,11 @@ app.post('/v2/game/coordinator', async (req, res)=>{
     await createGame(games, req, res, log)
 })
 
+//reveal a card
+app.patch('/v2/game/coordinator/:gameID/reveal/:userID/:cardID', (req, res)=>{
+    log.logRequest(req.url, 'PATCH')
+    revealCard(games, req, res, log)
+})
 
 expressWs.app.ws('/v2/game/coordinator/:gameID', async(ws:WebSocket, req:Request)=>{
     await websocketHandler(ws, req, games, memoryCards, manifestIDs, log)

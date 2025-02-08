@@ -1,0 +1,48 @@
+.whiteCard{
+    background-color: white;
+    border-radius: 10px;
+    border: 1px solid gray;
+    padding: 20px;
+    font-weight: 900;
+    min-height: 300px;
+    width: 200px;
+    color: black;
+    font-size: 1.2rem;
+    position: relative;
+    box-shadow: 0 0 5px 2px rgba(0,0,0,0.2);
+    transition: all cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s;
+}
+.whiteCardSelected{
+    scale: 1.1;
+    box-shadow: 0 0 10px 5px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+.blackCard{
+    border: 1px solid white;
+    min-height: 300px;
+    width: 200px;
+    border-radius: 10px;
+    padding: 20px;
+    font-weight: 900;
+    font-size: 1.2rem;
+}
+.blackCardSubmitButton{
+    background-color: black;
+    color: white;
+    border: 1px solid white;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 1rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s;
+}
+.blankReplacement{
+    background-color: white;
+    border: 1px solid gray;
+    color: black;
+}
+
+.blankReplacementInactive{
+    color: gray;
+}

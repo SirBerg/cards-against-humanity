@@ -21,7 +21,11 @@ export type gamesType = {
         websockets:{[key:string]:WebSocket}
         requests:{[key:string]:Request}
         starting:boolean,
-        queue:Array<string>
+        queue:Array<string>,
+        status: "playing" | "judging" | "lobby",
+        judging: {
+            "focusedPlayer":string,
+        }
     }
 }
 
@@ -33,7 +37,11 @@ export type gameType = {
     startedAt:string
     currentBlackCard:card
     clients:{[key:string]:clientType}
-    starting:boolean
+    starting:boolean,
+    status: "playing" | "judging" | "lobby",
+    judging: {
+        "focusedPlayer":string,
+    }
 }
 export type card = {
     content:string,
@@ -46,7 +54,8 @@ export type card = {
 
 export type clientCard = {
     id:string,
-    packID:string
+    packID:string,
+    isRevealed:boolean
 }
 
 export type cardMemoryObject = {[key:string]: {
@@ -58,3 +67,9 @@ export type cardMemoryObject = {[key:string]: {
 }}
 
 export type packManifest = Array<string>
+
+//This extension provides the necessary information to dynamically show the user the current black card
+//with selected but not played cards
+export interface clientCardExtension extends clientCard{
+    played:boolean
+}

@@ -65,7 +65,11 @@ export default async function createGame(games:gamesType, req:Request, res:Respo
         },
         websockets: {},
         requests: {},
-        queue: []
+        queue: [],
+        status: "lobby",
+        judging:{
+            focusedPlayer: '',
+        }
     }
     res.status(200).json({gameID})
     return

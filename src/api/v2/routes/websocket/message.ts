@@ -3,21 +3,28 @@ import {cardMemoryObject, gamesType, packManifest} from "@/lib/types";
 import {broadcastGameState} from "@api/lib";
 import {validateGameState} from "@api/lib/game";
 import {getRandomBlackCard} from "@api/lib/cards";
+import {RawData} from "ws";
 
 const allowedCommands:string[] = [
     "updateUser",
     "banUser",
     "updateUser",
-    "startGame"
+    "startGame",
+    "updateFocusedPlayer"
 ]
 
-export default function onMessage(event:any, games:gamesType, gameID:string, userID:string, memoryCards:cardMemoryObject, packManifests:packManifest, log:Logger){
+export default function onMessage(eventInput:RawData, games:gamesType, gameID:string, userID:string, memoryCards:cardMemoryObject, packManifests:packManifest, log:Logger){
     //Check if the event data is a JSON object
+    let event:{
+        type: string,
+        userName: string,
+        userID: string
+    }
     try{
-        event = JSON.parse(event)
+        event = JSON.parse(eventInput.toString())
     }
     catch(e){
-        log.debug(`Invalid JSON: ${event}, error was: ${e}`)
+        log.debug(`Invalid JSON: ${eventInput}, error was: ${e}`)
         return
     }
 
@@ -84,7 +91,7 @@ export default function onMessage(event:any, games:gamesType, gameID:string, use
         games[gameID].starting = true
         games[gameID].started = true
         games[gameID].startedAt = new Date().getTime().toString()
-
+        games[gameID].status = 'playing'
         //Get a random black card
         games[gameID].currentBlackCard = getRandomBlackCard(games, gameID, memoryCards)
 
@@ -97,5 +104,10 @@ export default function onMessage(event:any, games:gamesType, gameID:string, use
     //Handle Game Specific Tasks such as revealing Cards
     //Cards have to be submitted by calling the /v2/game/coordinator/:gameID/submit/:userID (POST) Endpoint
     //Winner has to be selected by calling the /v2/game/coordinator/:gameID/winner/:userID (POST) Endpoint
-
+    //This updates the currently focused player in the judging phase of the game. It can only be done by the player who is currently judging
+    if(event.type == 'updateFocusedPlayer' && games[gameID].clients[userID].isTurn && event.userID){
+        log.debug('Updating focused player')
+        games[gameID].judging.focusedPlayer = event.userID
+        broadcastGameState(gameID, games, log)
+    }
 }

@@ -17,7 +17,9 @@ export function broadcastGameState(gameID:string, games:gamesType, log:Logger){
                         started: games[gameID].started,
                         startedAt: games[gameID].startedAt,
                         currentBlackCard: games[gameID].currentBlackCard,
-                        clients: games[gameID].clients
+                        clients: games[gameID].clients,
+                        status: games[gameID].status,
+                        judging: games[gameID].judging
                     }
                 }
             )
