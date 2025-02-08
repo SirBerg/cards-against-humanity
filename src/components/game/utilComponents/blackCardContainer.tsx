@@ -51,7 +51,7 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
 
                 //We check if the user has submitted cards already to show them either a grayed out version to emphasize that they haven't submitted the card yet
                 //or a version that is more visible to show that they have submitted the card
-                if(submitted){
+                if(submitted || game.status === 'judging'){
                     newBlackCard.content = newBlackCard.content.replace(/_+/, `<span class="blankReplacement">${danglingCard.content}</span>`)
                 }
                 else{
