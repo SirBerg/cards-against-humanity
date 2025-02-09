@@ -35,7 +35,7 @@ gameDB.query(`
 `).all()
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const expressWs = require('express-ws')(app)
+let expressWs = require('express-ws')(app)
 app.use(cors())
 app.use(express.json())
 //initialize the webserver

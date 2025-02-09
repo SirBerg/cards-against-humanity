@@ -15,7 +15,7 @@ import { Toaster } from "@/components/ui/toaster"
 import {gameType, clientType} from "@/lib/types";
 import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
 
-export default function GameHandlerHome({callback}:{callback:Function}) {
+export default function GameHandlerHome({callback}:{callback:(gameID: string)=>void}) {
     const cookies = useCookies()
     const [user, setUser] = useState({id:'', name:''})
     const [gameID, setGameID] = useState('')
@@ -88,7 +88,8 @@ export default function GameHandlerHome({callback}:{callback:Function}) {
             //update the gameID in the parent component
             callback(gameID)
         }
-    }, [gameID, callback, user.id, user.name, webSocket]);
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameID]); // only update if gameID get changed
 
     //update the user
     useEffect(() => {
