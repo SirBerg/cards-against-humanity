@@ -28,7 +28,7 @@ export default function submitCards(request:Request, response:Response, games:ga
         response.status(400).json({error: 'Invalid request'})
         return
     }
-    log.debug(`Client ${request.query.userID} is submitting cards to game ${request.params.gameID}`)
+    log.debug(`Client ${request.params.userID} is submitting cards to game ${request.params.gameID}`)
     //Check if the submitted cards are more than the pick count
     if(request.body.cards.length > games[request.params.gameID].currentBlackCard.pickCount){
         response.status(400).json({error: 'Too many cards submitted'})
@@ -64,7 +64,16 @@ export default function submitCards(request:Request, response:Response, games:ga
     //Check if all players have submitted cards
     let allSubmitted = true
     for(const client in games[request.params.gameID].clients){
-        if(!games[request.params.gameID].clients[client].submittedCards && games[request.params.gameID].clients[client].isConnected && !games[request.params.gameID].clients[client].isTurn){
+        console.log(!games[request.params.gameID].clients[client].submittedCards &&
+            games[request.params.gameID].clients[client].isConnected &&
+            !games[request.params.gameID].clients[client].isTurn)
+        console.log(games[request.params.gameID].clients[client].submittedCards.length < games[request.params.gameID].currentBlackCard.pickCount && !games[request.params.gameID].clients[client].isTurn)
+        if(!games[request.params.gameID].clients[client].submittedCards &&
+            games[request.params.gameID].clients[client].isConnected &&
+            !games[request.params.gameID].clients[client].isTurn
+            ||
+            games[request.params.gameID].clients[client].submittedCards.length < games[request.params.gameID].currentBlackCard.pickCount
+            && !games[request.params.gameID].clients[client].isTurn){
             allSubmitted = false
             break
         }

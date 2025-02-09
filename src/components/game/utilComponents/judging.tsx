@@ -5,7 +5,7 @@ import {Logger} from "@/lib/logger";
 import {useEffect, useState} from "react";
 import {motion} from "motion/react";
 import {WhiteCard} from "@/components/game/utilComponents/cards";
-
+import './judging.css'
 //This component is responsible to handle the judging phase of the game
 //It takes the following arguments:
 //game: typeof gameType
@@ -15,7 +15,7 @@ import {WhiteCard} from "@/components/game/utilComponents/cards";
 export default function Judging({game, user, gameID, log, updateDanglingCards}:{game:gameType, user:{id:string, name:string}, gameID:string, log:Logger, updateDanglingCards:(cards:card[])=>void}){
     const [focusedUser, setFocusedUser] = useState<string>(game.judging.focusedPlayer)
     const [cards, setCards] = useState<{[key:string]:card[]}|null>(null)
-
+    const [, forceUpdate] = useReducer(x => x + 1, 0);
     useEffect(() => {
         log.debug('Judging Mounted')
         //Async wrapper for fetch
@@ -44,11 +44,12 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
                             setCards(()=>newCards)
                         })
                         .catch((error) => log.error(`Error while fetching card: ${error}`));
+                    console.log('Cards in mounting', cards)
                 }
             }
         }
         wrapper()
-    }, [cards, game.clients, log]);
+    }, []);
 
     //Handle updates to the game state
     useEffect(() => {
@@ -59,7 +60,9 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
         log.info('Cards have been updated in judging component')
         if(cards){
             console.log(cards)
-            console.log(Object.keys(cards))
+        }
+        else{
+            log.warn('Cards is empty')
         }
 
     }, [cards, log]);
@@ -90,7 +93,19 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
             })
             .catch((error) => log.error(`Error while revealing card: ${error}`));
     }
-
+    async function updateFocusedUser(userID:string){
+        const requestOptions = {
+            method: "PATCH",
+            redirect: "follow"
+        }
+        await fetch(`http://localhost:3001/v2/game/coordinator/${gameID}/gamestate/${userID}/focus`, requestOptions)
+            .then((response) => response.text())
+            .then((result) => {
+                log.debug(`Updated focused user: ${userID}`)
+                console.log(result)
+            })
+            .catch((error) => log.error(`Error while updating focused user: ${error}`));
+    }
 
     //If the current user has the turn, then we need to render another component than the ones for the normal users
     if(game.clients[user.id].isTurn){
@@ -110,35 +125,69 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
                         log.info(`Rendering Cards for user ${clientID}`)
                         //Return a wrapper for the cards first and in that iterate
                         return(
-                            <motion.div key={clientID}>
+                            <motion.div key={clientID} className="whiteCardsContainerJudging">
                                 {
-                                    cards[clientID].map((card)=>{
-                                        //Check if this card is supposed to be shown or hidden (if it's hidden we replace the cards content with "Cards against Humanity")
-                                        //Get the index of the card we're currently working on
-                                        const index = game.clients[clientID].submittedCards.findIndex((submittedCard)=>{
-                                            return submittedCard.id === card.id
-                                        })
-                                        //If the card is revealed, we show it
-                                        console.log(!game.clients[clientID].submittedCards[index])
-                                        if(!game.clients[clientID].submittedCards[index].isRevealed){
-                                            card.content = "Cards against Humanity"
-                                        }
+                                    //Check if we have a previous user to go to, if not, then hide the previous button
+                                    Object.keys(game.clients).indexOf(game.judging.focusedPlayer) - 1 !> 0 ?
+                                        <button>
+                                            Previous
+                                        </button>
+                                        :
+                                        null
+                                }
+                                <div className="whiteCardJudgeSelector">
+                                    {
+                                        cards[clientID].map((card) => {
+                                            //Check if this card is supposed to be shown or hidden (if it's hidden we replace the cards content with "Cards against Humanity")
+                                            //Get the index of the card we're currently working on
+                                            const index = game.clients[clientID].submittedCards.findIndex((submittedCard) => {
+                                                return submittedCard.id === card.id
+                                            })
 
-                                        return (
-                                            <button key={card.id}
-                                                onClick={()=>{
-                                                    reveal(clientID, card.id)
-                                                }}
-                                            >
-                                                <WhiteCard card={card} selected={false}/>
-                                            </button>
-                                        )
+                                            const newCardObject = {...card}
+
+                                            //Check if the card is revealed, if it isn't we show "Cards against Humanity"
+                                            if (!game.clients[clientID].submittedCards[index].isRevealed) {
+                                                newCardObject.content = 'Cards against Humanity'
+                                            }
+                                            return (
+                                                <button key={card.id}
+                                                        onClick={() => {
+
+                                                            //This handles the click event. It can only occur if the card is still hidden so once it's clicked we don't have to run this again
+                                                            if (!game.clients[clientID].submittedCards[index].isRevealed) {
+                                                                reveal(clientID, card.id)
+
+                                                                //TODO: Check if this is necessary
+                                                                forceUpdate()
+                                                            }
+                                                        }}
+                                                >
+                                                    <WhiteCard card={newCardObject} selected={false}/>
+                                                </button>
+                                            )
                                         })
+                                    }
+                                    <button className="judgeChooseButton">This 💯</button>
+                                </div>
+                                {
+                                    //Check if we have a next user to go to, if not, then hide the next button
+                                    Object.keys(game.clients).indexOf(game.judging.focusedPlayer) + 1 < Object.keys(game.clients).length ?
+                                        <button
+                                            onClick={()=>{
+                                                updateFocusedUser(Object.keys(game.clients)[Object.keys(game.clients).indexOf(game.judging.focusedPlayer) + 1])
+                                            }}
+                                        >
+                                            Next
+                                        </button>
+                                        :
+                                        null
                                 }
                             </motion.div>
                         )
                     })
                 : 'Loading...'}
+
             </div>
         )
     }
@@ -146,7 +195,29 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
     //For all other users, we render the normal judging component (which updates according to the moves of the user with the turn)
     return (
         <div>
-            <h1>Judging</h1>
+            {
+                //Show the cards of the focused player
+                cards && cards[focusedUser] ?
+                    <motion.div className="whiteCardsContainerJudging">
+                        {
+                            cards[focusedUser].map((card)=>{
+                                const indexOfCard = game.clients[focusedUser].submittedCards.findIndex((submittedCard)=>{
+                                    return submittedCard.id === card.id
+                                })
+                                const newCard = {...card}
+                                if(!game.clients[focusedUser].submittedCards[indexOfCard].isRevealed){
+                                    newCard.content = 'Cards against Humanity'
+                                }
+
+                                return (
+                                    <WhiteCard card={newCard} key={card.id} selected={false}/>
+                                )
+                            })
+                        }
+                    </motion.div>
+                    :
+                    'Loading...'
+            }
         </div>
     )
 }
