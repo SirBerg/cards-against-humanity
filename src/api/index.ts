@@ -11,6 +11,7 @@ import revealCard from "@api/v2/routes/revealCard";
 import createGame from "@api/v2/routes/createGame";
 import websocketHandler from "@api/v2/routes/websocketHandler";
 import submitCards from "@api/v2/routes/submitCard";
+import updateFocusedUser from "@api/v2/routes/updateFocusedUser";
 const log = new Logger()
 log.setJsonLogging(false)
 log.setLogLevel('DEBUG')
@@ -135,7 +136,8 @@ app.get('/v2/game/coordinator/:gameid/gamestate/:userid', (req, res)=>{
                     currentBlackCard: games[req.params.gameid].currentBlackCard,
                     clients: games[req.params.gameid].clients,
                     status: games[req.params.gameid].status,
-                    judging: games[req.params.gameid].judging
+                    judging: games[req.params.gameid].judging,
+                    queue: games[req.params.gameid].queue,
                 }
             }
         )
@@ -159,6 +161,11 @@ app.post('/v2/game/coordinator', async (req, res)=>{
 app.patch('/v2/game/coordinator/:gameID/reveal/:userID/:cardID', (req, res)=>{
     log.logRequest(req.url, 'PATCH')
     revealCard(games, req, res, log)
+})
+
+app.patch('/v2/game/coordinator/:gameID/gamestate/:userID/focus', async (req, res)=>{
+    log.logRequest(req.url, 'PATCH')
+    await updateFocusedUser(req, res, games, log)
 })
 
 app.ws('/v2/game/coordinator/:gameID', async(ws:WebSocket, req:Request)=>{

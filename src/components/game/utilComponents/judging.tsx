@@ -113,75 +113,62 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
         return (
             <div>
                 {
-                    //map over all of the clients and show their white cards (but only if they are revealed)
-                    cards ? Object.keys(cards).map((clientID)=>{
-                        //exclude the user with the turn
-                        if(clientID === user.id){
-                            log.warn('Skipping user with turn')
-                            return
-                        }
-                        log.info(`Rendering Cards for user ${clientID}`)
-                        //Return a wrapper for the cards first and in that iterate
+                    //map over all the cards of the user that is currently focused
+                    cards && game.judging.focusedPlayer ? game.clients[game.judging.focusedPlayer].submittedCards.map((card)=>{
+
+
+
                         return(
-                            <motion.div key={clientID} className="whiteCardsContainerJudging">
+                            <div key={card.id}>
                                 {
-                                    //Check if we have a previous user to go to, if not, then hide the previous button
-                                    Object.keys(game.clients).indexOf(game.judging.focusedPlayer) - 1 !> 0 ?
-                                        <button>
-                                            Previous
-                                        </button>
+                                    //If this is **not** the first user, we render the previous button
+                                    //As the first user in the queue is the user with the turn, we need this to be over 0
+                                    game.queue.indexOf(game.judging.focusedPlayer) > 0 ?
+                                        <button onClick={()=>{
+                                            updateFocusedUser(game.queue[game.queue.indexOf(game.judging.focusedPlayer)-1])
+                                        }}>Previous</button>
                                         :
                                         null
                                 }
-                                <div className="whiteCardJudgeSelector">
-                                    {
-                                        cards[clientID].map((card) => {
-                                            //Check if this card is supposed to be shown or hidden (if it's hidden we replace the cards content with "Cards against Humanity")
-                                            //Get the index of the card we're currently working on
-                                            const index = game.clients[clientID].submittedCards.findIndex((submittedCard) => {
-                                                return submittedCard.id === card.id
-                                            })
-
-                                            const newCardObject = {...card}
-
-                                            //Check if the card is revealed, if it isn't we show "Cards against Humanity"
-                                            if (!game.clients[clientID].submittedCards[index].isRevealed) {
-                                                newCardObject.content = 'Cards against Humanity'
-                                            }
-                                            return (
-                                                <button key={card.id}
-                                                        onClick={() => {
-
-                                                            //This handles the click event. It can only occur if the card is still hidden so once it's clicked we don't have to run this again
-                                                            if (!game.clients[clientID].submittedCards[index].isRevealed) {
-                                                                reveal(clientID, card.id)
-
-                                                                //TODO: Check if this is necessary
-                                                                forceUpdate()
-                                                            }
-                                                        }}
-                                                >
-                                                    <WhiteCard card={newCardObject} selected={false}/>
-                                                </button>
-                                            )
+                                {
+                                    //Render the cards of that user
+                                    game.clients[game.judging.focusedPlayer].submittedCards.map((submittedCard)=>{
+                                        const card = cards[game.judging.focusedPlayer].find((card)=>{
+                                            return card.id === submittedCard.id
                                         })
-                                    }
-                                    <button className="judgeChooseButton">This 💯</button>
-                                </div>
+                                        if(!card){
+                                            log.debug(`Card not found for ${submittedCard.id}`)
+                                            return null
+                                        }
+                                        const newCard = {...card}
+
+                                        //If the card is not revealed, we show a placeholder
+                                        if(!submittedCard.isRevealed){
+                                            newCard.content = 'Cards against Humanity'
+                                        }
+
+                                        return(
+                                            <button
+                                                key={card.id}
+                                                onClick={()=>{
+                                                    reveal(game.judging.focusedPlayer, card.id)
+                                                }}
+                                            >
+                                                <WhiteCard card={newCard} selected={false} />
+                                            </button>
+                                        )
+                                    })
+                                }
                                 {
-                                    //Check if we have a next user to go to, if not, then hide the next button
-                                    Object.keys(game.clients).indexOf(game.judging.focusedPlayer) + 1 < Object.keys(game.clients).length ?
-                                        <button
-                                            onClick={()=>{
-                                                updateFocusedUser(Object.keys(game.clients)[Object.keys(game.clients).indexOf(game.judging.focusedPlayer) + 1])
-                                            }}
-                                        >
-                                            Next
-                                        </button>
+                                    //If this is **not** the last user, we render the next button
+                                    game.queue.indexOf(game.judging.focusedPlayer) < game.queue.length-1 ?
+                                        <button onClick={()=>{
+                                            updateFocusedUser(game.queue[game.queue.indexOf(game.judging.focusedPlayer)+1])
+                                        }}>Next</button>
                                         :
                                         null
                                 }
-                            </motion.div>
+                            </div>
                         )
                     })
                 : 'Loading...'}

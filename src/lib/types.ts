@@ -37,6 +37,7 @@ export type gameType = {
     clients:{[key:string]:clientType}
     starting:boolean,
     status: "playing" | "judging" | "lobby",
+    queue:Array<string>,
     judging: {
         "focusedPlayer":string,
     }

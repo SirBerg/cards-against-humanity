@@ -19,7 +19,8 @@ export function broadcastGameState(gameID:string, games:gamesType, log:Logger){
                         currentBlackCard: games[gameID].currentBlackCard,
                         clients: games[gameID].clients,
                         status: games[gameID].status,
-                        judging: games[gameID].judging
+                        judging: games[gameID].judging,
+                        queue: games[gameID].queue,
                     }
                 }
             )
