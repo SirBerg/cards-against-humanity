@@ -139,6 +139,6 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
 
     //If the user is the judge, we show the judge view
     if(game.clients[user.id].isTurn){
-        return <Judge cards={cards} game={game} user={user} gameID={gameID} log={log} judgeQueue={judgeQueue} updateFocusedUser={updateFocusedUser}/>
+        return <Judge cards={cards} game={game} user={user} gameID={gameID} log={log} judgeQueue={judgeQueue} updateFocusedUser={updateFocusedUser} revealCard={reveal}/>
     }
 }
