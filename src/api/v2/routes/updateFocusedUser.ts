@@ -1,6 +1,7 @@
 import {gamesType} from "@/lib/types";
 import {Request, Response} from "express";
 import {Logger} from "@/lib/logger";
+import {broadcastGameState} from "@api/lib";
 
 async function checkFocusedUserReq(req:Request, res:Response):Promise<void>{
     return new Promise((resolve, reject)=>{
@@ -18,6 +19,7 @@ async function checkFocusedUserReq(req:Request, res:Response):Promise<void>{
 
 export default async function updateFocusedUser(req:Request, res:Response, games:gamesType, log:Logger){
     let isErr = false
+    log.debug('Received request to update focused user')
     await checkFocusedUserReq(req, res).catch(()=>isErr=true)
     if(isErr){
         log.warn('Invalid request to updateFocusedUser')
@@ -38,4 +40,9 @@ export default async function updateFocusedUser(req:Request, res:Response, games
 
     //Update the focused user
     games[req.params.gameID].judging.focusedPlayer = req.params.userID
+    console.log(games[req.params.gameID].judging.focusedPlayer)
+    log.debug(`Updated focused user to ${req.params.userID}`)
+    broadcastGameState(req.params.gameID, games, log)
+    res.status(204).send();
+    return
 }

@@ -6,6 +6,7 @@ import {useEffect, useState, useReducer} from "react";
 import {AnimatePresence, motion} from "motion/react";
 import {WhiteCard} from "@/components/game/utilComponents/cards";
 import './judging.css'
+import Judge from "@/components/game/utilComponents/judging/judge";
 //This component is responsible to handle the judging phase of the game
 //It takes the following arguments:
 //game: typeof gameType
@@ -16,12 +17,15 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
     const [focusedUser, setFocusedUser] = useState<string>(game.judging.focusedPlayer)
     const [cards, setCards] = useState<{[key:string]:card[]}>(null)
     const [, forceUpdate] = useReducer(x => x + 1, 0);
+    const [judgeQueue, setJudgeQueue] = useState<string[]>(game.queue.filter((clientID) => !game.clients[clientID].isTurn))
     useEffect(() => {
         log.debug('Judging Mounted')
         //Async wrapper for fetch
         async function wrapper(){
             //Iterate over all the clients and fetch their cards
+            let newCards:{[key:string]:card[]} = {}
             for(const userID of Object.keys(game.clients)){
+                log.info(`Fetching cards for ${userID}`)
                 for(const submittedCard of game.clients[userID].submittedCards){
                     const requestOptions = {
                         method: "GET",
@@ -33,19 +37,24 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
                         .then((result) => {
                             const card:card = JSON.parse(result)
                             log.debug(`Fetched card: ${card.id}`)
-                            let newCards = {...cards}
                             if(newCards[userID]){
                                 newCards[userID].push(card)
                             }
                             else{
                                 newCards[userID] = [card]
                             }
-                            setCards((prev)=>newCards)
                         })
                         .catch((error) => log.error(`Error while fetching card: ${error}`));
                     console.log('Cards in mounting', cards)
                 }
+
+                //Set the focused user to the first user in the judge queue if this user is the judge
+                if(game.clients[user.id].isTurn){
+                    await updateFocusedUser(judgeQueue[0])
+                }
             }
+            log.error('Setting cards')
+            setCards(newCards)
         }
         wrapper()
     }, []);
@@ -54,6 +63,16 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
     useEffect(() => {
         setFocusedUser(game.judging.focusedPlayer)
         log.debug('Game State Changed in Judging Component')
+
+        //Update the judge queue
+        setJudgeQueue(game.queue.filter((clientID) => {
+            if(game.clients[clientID].isTurn){
+                return false
+            }
+            return game.clients[clientID].submittedCards.length !== 0;
+
+        }))
+
     }, [game]);
     useEffect(() => {
         log.info('Cards have been updated in judging component')
@@ -65,6 +84,10 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
         }
 
     }, [cards]);
+    useEffect(()=>{
+        log.debug('Judge Queue Updated')
+        console.log(judgeQueue)
+    }, [judgeQueue])
     //Once the focusedPlayer updates, we need to update the dangling cards in the parent component to show the correct cards to the user
     useEffect(() => {
         log.debug('Focused player changed')
@@ -105,104 +128,17 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
             .catch((error) => log.error(`Error while updating focused user: ${error}`));
     }
 
-    //If the current user has the turn, then we need to render another component than the ones for the normal users
-    if(game.clients[user.id].isTurn){
+    //Check if the game and cards are loaded, if not then we return the loading screen
+    console.log('Game in judging', game)
+    console.log('Cards in judging', cards)
 
-        //For the user that has the turn, we render all the cards in a component for them to click and scroll through
-        //This allows the user to freely click and scroll through all the suggestions
-        return (
-            <div>
-                {
-                    //map over all the cards of the user that is currently focused
-                    cards && game.judging.focusedPlayer ? game.clients[game.judging.focusedPlayer].submittedCards.map((card)=>{
-
-
-
-                        return(
-                            <div key={card.id}>
-                                {
-                                    //If this is **not** the first user, we render the previous button
-                                    //As the first user in the queue is the user with the turn, we need this to be over 0
-                                    game.queue.indexOf(game.judging.focusedPlayer) > 0 ?
-                                        <button onClick={()=>{
-                                            updateFocusedUser(game.queue[game.queue.indexOf(game.judging.focusedPlayer)-1])
-                                        }}>Previous</button>
-                                        :
-                                        null
-                                }
-                                {
-                                    //Render the cards of that user
-                                    game.clients[game.judging.focusedPlayer].submittedCards.map((submittedCard)=>{
-                                        const card = cards[game.judging.focusedPlayer].find((card)=>{
-                                            return card.id === submittedCard.id
-                                        })
-                                        if(!card){
-                                            log.debug(`Card not found for ${submittedCard.id}`)
-                                            return null
-                                        }
-                                        const newCard = {...card}
-
-                                        //If the card is not revealed, we show a placeholder
-                                        if(!submittedCard.isRevealed){
-                                            newCard.content = 'Cards against Humanity'
-                                        }
-
-                                        return(
-                                            <button
-                                                key={card.id}
-                                                onClick={()=>{
-                                                    reveal(game.judging.focusedPlayer, card.id)
-                                                }}
-                                            >
-                                                <WhiteCard card={newCard} selected={false} />
-                                            </button>
-                                        )
-                                    })
-                                }
-                                {
-                                    //If this is **not** the last user, we render the next button
-                                    game.queue.indexOf(game.judging.focusedPlayer) < game.queue.length-1 ?
-                                        <button onClick={()=>{
-                                            updateFocusedUser(game.queue[game.queue.indexOf(game.judging.focusedPlayer)+1])
-                                        }}>Next</button>
-                                        :
-                                        null
-                                }
-                            </div>
-                        )
-                    })
-                : 'Loading...'}
-
-            </div>
-        )
+    if(!game || !cards){
+        log.warn('Game or cards not loaded')
+        return <div>{user.id}</div>
     }
 
-    //For all other users, we render the normal judging component (which updates according to the moves of the user with the turn)
-    return (
-        <div>
-            {
-                //Show the cards of the focused player
-                cards && cards[focusedUser] ?
-                    <motion.div className="whiteCardsContainerJudging">
-                        {
-                            cards[focusedUser].map((card)=>{
-                                const indexOfCard = game.clients[focusedUser].submittedCards.findIndex((submittedCard)=>{
-                                    return submittedCard.id === card.id
-                                })
-                                const newCard = {...card}
-                                if(!game.clients[focusedUser].submittedCards[indexOfCard].isRevealed){
-                                    newCard.content = 'Cards against Humanity'
-                                }
-
-                                return (
-                                    <WhiteCard card={newCard} key={card.id} selected={false}/>
-                                )
-                            })
-                        }
-                    </motion.div>
-                    :
-                    'Loading...'
-            }
-        </div>
-    )
+    //If the user is the judge, we show the judge view
+    if(game.clients[user.id].isTurn){
+        return <Judge cards={cards} game={game} user={user} gameID={gameID} log={log} judgeQueue={judgeQueue} updateFocusedUser={updateFocusedUser}/>
+    }
 }
