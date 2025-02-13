@@ -50,7 +50,7 @@ export default function revealCard(games:gamesType, req:Request, res:Response, l
         }
         index++;
     }
-    res.status(200)
+    res.status(204).send()
     broadcastGameState(gameID, games, log)
     return
 }

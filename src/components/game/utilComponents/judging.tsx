@@ -15,7 +15,7 @@ import Player from "@/components/game/utilComponents/judging/player";
 export default function Judging({game, user, gameID, log, updateDanglingCards}:{game:gameType, user:{id:string, name:string}, gameID:string, log:Logger, updateDanglingCards:(cards:card[])=>void}){
     const [focusedUser, setFocusedUser] = useState<string>(game.judging.focusedPlayer)
     const [cards, setCards] = useState<{[key:string]:card[]}>(null)
-    const [, forceUpdate] = useReducer(x => x + 1, 0);
+
     const [judgeQueue, setJudgeQueue] = useState<string[]>(game.queue.filter((clientID) => !game.clients[clientID].isTurn))
     useEffect(() => {
         log.debug('Judging Mounted')
@@ -44,7 +44,6 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
                             }
                         })
                         .catch((error) => log.error(`Error while fetching card: ${error}`));
-                    console.log('Cards in mounting', cards)
                 }
 
                 //Set the focused user to the first user in the judge queue if this user is the judge
@@ -69,10 +68,22 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
                 return false
             }
             return game.clients[clientID].submittedCards.length !== 0;
-
         }))
-
+        if(cards && cards[game.judging.focusedPlayer]){
+            log.info('Updating dangling cards because game has changed')
+            updateDanglingCards([...cards[game.judging.focusedPlayer]])
+        }
     }, [game]);
+
+    useEffect(() => {
+        log.error('Submitted cards updated')
+        if(game.clients[game.judging.focusedPlayer].submittedCards && cards){
+            log.info('Updating cards as submitted cards changed')
+            //update the cards
+            updateDanglingCards([...cards[game.judging.focusedPlayer]])
+        }
+    }, [game.clients[game.judging.focusedPlayer].submittedCards]);
+
     useEffect(() => {
         log.info('Cards have been updated in judging component')
         if(cards){
@@ -81,7 +92,6 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
         else{
             log.warn('Cards is empty')
         }
-
     }, [cards]);
     useEffect(()=>{
         log.debug('Judge Queue Updated')
@@ -126,6 +136,7 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
                 console.log(result)
             })
             .catch((error) => log.error(`Error while updating focused user: ${error}`));
+
     }
 
     //Check if the game and cards are loaded, if not then we return the loading screen

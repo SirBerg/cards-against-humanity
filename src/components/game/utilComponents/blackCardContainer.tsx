@@ -59,7 +59,7 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
                 //We check if this card is supposed to be revealed or not, if it's not supposed to be reveald and the game is in the judging phase we show a replacement text
                 let newContent = danglingCard.content
                 if(submittedCard && !submittedCard.isRevealed && game.status === 'judging'){
-                    newContent = ''
+                    newContent = '______'
                 }
 
                 //We check if the user has submitted cards already to show them either a grayed out version to emphasize that they haven't submitted the card yet

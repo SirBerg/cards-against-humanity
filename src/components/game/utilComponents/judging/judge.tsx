@@ -2,7 +2,12 @@ import {card, gameType} from "@/lib/types";
 import {WhiteCard} from "@/components/game/utilComponents/cards";
 import {Logger} from "@/lib/logger";
 import '../judging.css'
-export default function Judge({cards, game, user, gameID, log, judgeQueue, updateFocusedUser, revealCard}:{ cards:{[key: string]: card[]} , game:gameType, user:{id:string, name:string}, gameID:string, log:Logger, judgeQueue:string[], updateFocusedUser:(userID:string)=>Promise<void>, revealCard:(clientID:string, cardID:string)=>void}){
+export default function Judge({cards, game, user, gameID, log, judgeQueue, updateFocusedUser, revealCard}:{ cards:{[key: string]: card[]} , game:gameType, user:{id:string, name:string}, gameID:string, log:Logger, judgeQueue:string[], updateFocusedUser:(userID:string)=>Promise<void>, revealCard:(clientID:string, cardID:string)=>Promise<void>}){
+    //Function to choose a winner of the round
+    function chooseWinner(){
+        log.info('Choose button clicked')
+    }
+
 
     return(
         <div className="judgeContainerPackage">
@@ -41,7 +46,12 @@ export default function Judge({cards, game, user, gameID, log, judgeQueue, updat
 
                             return(
                                 <button key={card.id}
-                                        onClick={()=>revealCard(game.judging.focusedPlayer, card.id)}
+                                        onClick={()=>{
+                                            async function wrapper(){
+                                                await revealCard(game.judging.focusedPlayer, card.id)
+                                            }
+                                            wrapper()
+                                        }}
                                 >
                                     <WhiteCard
                                         card={cardToDisplay}
@@ -51,7 +61,13 @@ export default function Judge({cards, game, user, gameID, log, judgeQueue, updat
                             )
                         })
                     }
-                    <button className="judgeChooseButton">Choose this</button>
+                    <button className="judgeChooseButton" onClick={()=>{
+                        async function wrapper() {
+                            log.info('Choose button clicked')
+                            chooseWinner()
+                        }
+                        wrapper()
+                    }}>Choose this</button>
                 </div>
 
             }
