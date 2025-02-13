@@ -3,10 +3,9 @@
 import {card, gameType} from "@/lib/types";
 import {Logger} from "@/lib/logger";
 import {useEffect, useState, useReducer} from "react";
-import {AnimatePresence, motion} from "motion/react";
-import {WhiteCard} from "@/components/game/utilComponents/cards";
 import './judging.css'
 import Judge from "@/components/game/utilComponents/judging/judge";
+import Player from "@/components/game/utilComponents/judging/player";
 //This component is responsible to handle the judging phase of the game
 //It takes the following arguments:
 //game: typeof gameType
@@ -90,6 +89,7 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
     }, [judgeQueue])
     //Once the focusedPlayer updates, we need to update the dangling cards in the parent component to show the correct cards to the user
     useEffect(() => {
+
         log.debug('Focused player changed')
         //Set the dangling cards to the cards of the focused player
         if(cards && cards[focusedUser]){
@@ -142,7 +142,6 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
         return <Judge cards={cards} game={game} user={user} gameID={gameID} log={log} judgeQueue={judgeQueue} updateFocusedUser={updateFocusedUser} revealCard={reveal}/>
     }
 
-
     //If this user is not the judge, we show only the Player Component
-
+    return <Player game={game} cards={cards} user={user} gameID={gameID} />
 }

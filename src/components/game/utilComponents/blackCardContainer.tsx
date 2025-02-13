@@ -50,10 +50,14 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
             for(const danglingCard of danglingCardsNew){
 
                 //Find the submitted card in the user's submitted cards so we can check whether we should show the blank card replacement
-                const submittedCard = game.clients[game.judging.focusedPlayer].submittedCards.find((clientCardExtension) => clientCardExtension.id === danglingCard.id)
+                let submittedCard = null
+                if(game.status == "judging" && game.judging.focusedPlayer){
+                    submittedCard = game.clients[game.judging.focusedPlayer].submittedCards.find((clientCardExtension) => clientCardExtension.id === danglingCard.id)
+                }
+
+
                 //We check if this card is supposed to be revealed or not, if it's not supposed to be reveald and the game is in the judging phase we show a replacement text
                 let newContent = danglingCard.content
-
                 if(submittedCard && !submittedCard.isRevealed && game.status === 'judging'){
                     newContent = ''
                 }
@@ -70,7 +74,6 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
             setBlackCard(newBlackCard)
         }
         effectWrapper()
-
     }, [danglingCards, submitted]);
 
     //This function is called when the user clicks the submit button
