@@ -49,13 +49,22 @@ export default function BlackCardContainer({card, danglingCards, submitted, game
             }
             for(const danglingCard of danglingCardsNew){
 
+                //Find the submitted card in the user's submitted cards so we can check whether we should show the blank card replacement
+                const submittedCard = game.clients[game.judging.focusedPlayer].submittedCards.find((clientCardExtension) => clientCardExtension.id === danglingCard.id)
+                //We check if this card is supposed to be revealed or not, if it's not supposed to be reveald and the game is in the judging phase we show a replacement text
+                let newContent = danglingCard.content
+
+                if(submittedCard && !submittedCard.isRevealed && game.status === 'judging'){
+                    newContent = ''
+                }
+
                 //We check if the user has submitted cards already to show them either a grayed out version to emphasize that they haven't submitted the card yet
                 //or a version that is more visible to show that they have submitted the card
-                if(submitted || game.status === 'judging'){
-                    newBlackCard.content = newBlackCard.content.replace(/_+/, `<span class="blankReplacement">${danglingCard.content}</span>`)
+                if(submitted || game.status === 'judging' ){
+                    newBlackCard.content = newBlackCard.content.replace(/_+/, `<span class="blankReplacement">${newContent}</span>`)
                 }
                 else{
-                    newBlackCard.content = newBlackCard.content.replace(/_+/, `<span class="blankReplacementInactive">${danglingCard.content}</span>`)
+                    newBlackCard.content = newBlackCard.content.replace(/_+/, `<span class="blankReplacementInactive">${newContent}</span>`)
                 }
             }
             setBlackCard(newBlackCard)

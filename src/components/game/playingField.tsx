@@ -58,7 +58,6 @@ export default function PlayingField({game, user, gameID}:{game:gameType, user:{
                 /> : null
             }
 
-
             <WhiteCardContainer
                 game={game}
                 user={user}

@@ -141,4 +141,8 @@ export default function Judging({game, user, gameID, log, updateDanglingCards}:{
     if(game.clients[user.id].isTurn){
         return <Judge cards={cards} game={game} user={user} gameID={gameID} log={log} judgeQueue={judgeQueue} updateFocusedUser={updateFocusedUser} revealCard={reveal}/>
     }
+
+
+    //If this user is not the judge, we show only the Player Component
+
 }
